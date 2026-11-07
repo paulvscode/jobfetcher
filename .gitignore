@@ -1,0 +1,9 @@
+jobs.db
+report.html
+.env
+.venv/
+collect.log
+__pycache__/
+jobs.backup-*.db
+dashboard.html
+site/

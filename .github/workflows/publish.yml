@@ -1,0 +1,53 @@
+# Collects the data every month and publishes the dashboard on GitHub Pages.
+# Needs two repository secrets: FT_CLIENT_ID and FT_CLIENT_SECRET (France Travail API).
+name: Collect data and publish
+
+on:
+  schedule:
+    - cron: "0 5 5 * *"     # 5th of each month, 05:00 UTC
+  workflow_dispatch:          # "Run workflow" button in the Actions tab
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      FT_CLIENT_ID: ${{ secrets.FT_CLIENT_ID }}
+      FT_CLIENT_SECRET: ${{ secrets.FT_CLIENT_SECRET }}
+      PUBLIC_PERSON_NAMES: ${{ vars.PUBLIC_PERSON_NAMES }}   # optional repository variable, "1" to show sole traders' names
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Job market statistics (France Travail)
+        run: python collect.py
+      - name: Businesses and local services (Sirene, BPE)
+        run: python collect_territory.py
+      - name: Build the site
+        run: python publish.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
