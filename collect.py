@@ -15,6 +15,7 @@ from datetime import datetime
 
 from focus import focus_romes
 from ft_api import FranceTravailClient
+from sport import SPORT_NAF88, SPORT_ROMES
 
 
 def load_env(path=".env"):
@@ -128,7 +129,11 @@ def main():
     ap.add_argument("--skip-lbb", action="store_true", help="skip the company search")
     ap.add_argument("--only-lbb", action="store_true",
                     help="only refresh the company search (uses statistics already in jobs.db)")
+    ap.add_argument("--only-sport", action="store_true",
+                    help="only collect the sport jobs in the benchmark areas (~3 minutes)")
     args = ap.parse_args()
+    if args.only_sport:
+        args.only_lbb = args.skip_lbb = True
 
     cid, secret = os.getenv("FT_CLIENT_ID"), os.getenv("FT_CLIENT_SECRET")
     if not cid or not secret:
@@ -141,6 +146,8 @@ def main():
 
     if not args.only_lbb:
         collect_stats(client, conn, args)
+    if not args.only_lbb or args.only_sport:
+        collect_sport_benchmarks(client, conn)
 
     # 6. Companies likely to hire (La Bonne Boîte), for the most relevant jobs
     if not args.skip_lbb:
@@ -231,6 +238,23 @@ def collect_stats(client, conn, args):
         jobs.append(("stat-embauches", body(ttype, TERRITORY, "NAF88", n, "CATCANDxDUREEEMP")))
     print(f"Sectors ({len(jobs)} calls)…")
     for (ep, _), vals in fetch_many(client, jobs, "sectors"):
+        save_values(conn, INDICATORS[ep][0], INDICATORS[ep][2], vals)
+    conn.commit()
+
+
+def collect_sport_benchmarks(client, conn):
+    """Sport jobs (sport.py) and the sport sector in the benchmark areas, for the gym tab."""
+    jobs = []
+    for t in BENCHMARKS:
+        tt, tc = t.split(":")
+        for r in SPORT_ROMES:
+            for ep, (_, nom, _) in INDICATORS.items():
+                jobs.append((ep, body(tt, tc, "ROME", r, nom)))
+        for n in SPORT_NAF88:
+            for ep in ("stat-offres", "stat-embauches"):
+                jobs.append((ep, body(tt, tc, "NAF88", n, INDICATORS[ep][1])))
+    print(f"Sport jobs in the benchmark areas ({len(jobs)} calls)…")
+    for (ep, _), vals in fetch_many(client, jobs, "sport"):
         save_values(conn, INDICATORS[ep][0], INDICATORS[ep][2], vals)
     conn.commit()
 

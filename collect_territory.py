@@ -52,6 +52,9 @@ CREATE TABLE IF NOT EXISTS sirene_etab (
 CREATE TABLE IF NOT EXISTS bpe_types (code TEXT PRIMARY KEY, label TEXT, dom TEXT, sdom TEXT);
 CREATE TABLE IF NOT EXISTS bpe_labels (code TEXT PRIMARY KEY, label TEXT);
 CREATE TABLE IF NOT EXISTS bpe (area TEXT, type TEXT, year TEXT, count INTEGER, PRIMARY KEY (area, type));
+CREATE TABLE IF NOT EXISTS bpe_city (city TEXT, type TEXT, year TEXT, count INTEGER, PRIMARY KEY (city, type));
+CREATE TABLE IF NOT EXISTS pop_age (city TEXT, year TEXT, age TEXT, sex TEXT, pop REAL,
+    PRIMARY KEY (city, year, age, sex));
 CREATE TABLE IF NOT EXISTS territory_runs (run_at TEXT PRIMARY KEY, sirene_file TEXT, bpe_year TEXT, notes TEXT);
 """
 
@@ -335,15 +338,61 @@ def load_bpe(conn):
     return year
 
 
+def melodi(url, geos):
+    """One Melodi call for a few communes, with retries on the rate limit."""
+    params = [("GEO", f"COM-{c}") for c in geos] + [("maxResult", 100000)]
+    for attempt in range(5):
+        r = requests.get(url, params=params, timeout=120)
+        if r.status_code == 429:
+            time.sleep(10 + 10 * attempt)
+            continue
+        r.raise_for_status()
+        return r.json().get("observations", [])
+    r.raise_for_status()
+
+
+def load_city(conn):
+    """The centre communes alone (not +30 km): services (BPE) and population by age."""
+    print("Centre cities: services and population by age…")
+    city = {code: name for name, code in AREAS.items()}
+    year = requests.get(BPE_RANGE, timeout=60).json()["range"]
+    year = {d["concept"]["code"]: d["values"] for d in year}["TIME_PERIOD"][0]["code"]
+    rows = []
+    for o in melodi(BPE_URL, city):
+        d = o["dimensions"]
+        rows.append((city[d["GEO"].rsplit("-", 1)[-1]], d["FACILITY_TYPE"], year,
+                     int(o["measures"]["OBS_VALUE_NIVEAU"]["value"] or 0)))
+    conn.execute("DELETE FROM bpe_city")
+    conn.executemany("INSERT OR REPLACE INTO bpe_city VALUES (?,?,?,?)", rows)
+    time.sleep(2.1)
+    rows = []
+    for o in melodi("https://api.insee.fr/melodi/data/DS_RP_POPULATION_PRINC", city):
+        d = o["dimensions"]
+        if d.get("RP_MEASURE") == "POP":
+            rows.append((city[d["GEO"].rsplit("-", 1)[-1]], d["TIME_PERIOD"], d["AGE"], d["SEX"],
+                         o["measures"]["OBS_VALUE_NIVEAU"]["value"]))
+    conn.execute("DELETE FROM pop_age")
+    conn.executemany("INSERT OR REPLACE INTO pop_age VALUES (?,?,?,?,?)", rows)
+    conn.commit()
+    print(f"  {len(rows)} population figures")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-sirene", action="store_true", help="skip the Sirene business register")
     ap.add_argument("--skip-bpe", action="store_true", help="skip the BPE services database")
     ap.add_argument("--names-only", action="store_true", help="only (re)load company names")
+    ap.add_argument("--city-only", action="store_true",
+                    help="only the centre cities' services and population by age (seconds)")
     args = ap.parse_args()
     if args.names_only:
         conn = sqlite3.connect(DB_PATH)
         load_names(conn)
+        return
+    if args.city_only:
+        conn = sqlite3.connect(DB_PATH)
+        conn.executescript(SCHEMA)
+        load_city(conn)
         return
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(SCHEMA)
@@ -352,6 +401,7 @@ def main():
     sirene_title = bpe_year = None
     if not args.skip_bpe:
         bpe_year = load_bpe(conn)
+        load_city(conn)
     if not args.skip_sirene:
         load_naf_labels(conn)
         sirene_title = load_sirene(conn)

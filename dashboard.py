@@ -75,6 +75,100 @@ def load_local(conn):
     return out
 
 
+GYMS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gyms.json")
+# Territories compared in the gym tab (France Travail codes)
+GYM_TERR = [TERRITORY, "CLPE76004", "CLPE14002", "CLPE29001", "28", "FR"]
+SIZE_MIN = {"21": 50, "22": 100, "31": 200, "32": 250, "41": 500, "42": 1000, "51": 2000, "52": 5000, "53": 10000}
+
+
+def load_gym(conn, labels, tension):
+    """Data for the "Salles de sport" tab: competitors (gyms.json) and the centre city's figures."""
+    from sport import SPORT_BPE, SPORT_NAF, SPORT_NAF88, SPORT_ROMES
+    out = {"gyms": None}
+    if os.path.exists(GYMS_PATH):
+        with open(GYMS_PATH, encoding="utf-8") as f:
+            out["gyms"] = json.load(f)
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+
+    # Centre cities (not +30 km)
+    from collect_territory import AREAS
+    cities = []
+    if "communes" in tables:
+        pop = dict(conn.execute("SELECT code, population FROM communes"))
+        cities = [{"n": n, "code": c, "pop": pop.get(c, 0)} for n, c in AREAS.items()]
+    out["cities"] = cities
+    codes = [c["code"] for c in cities]
+
+    this_year = datetime.now().year
+    out["years"] = list(range(2015, this_year + 1))
+    out["naf"] = []
+    if "sirene_etab" in tables and cities:
+        naf_labels = {c: clean(l) for c, l in conn.execute("SELECT code, label FROM naf_labels")}
+        # the establishment list only covers the main area: other cities get None
+        listed = {c for c in codes if conn.execute("SELECT 1 FROM sirene_etab WHERE commune=? LIMIT 1", (c,)).fetchone()}
+        for naf, short in SPORT_NAF.items():
+            n = [conn.execute("SELECT COUNT(*), SUM(employer='O') FROM sirene_etab WHERE naf=? AND commune=? "
+                              "AND closed=''", (naf, c)).fetchone() if c in listed else (None, None) for c in codes]
+            created = dict(conn.execute("SELECT CAST(substr(created,1,4) AS INT) y, COUNT(*) FROM sirene_etab "
+                                        "WHERE naf=? AND commune=? GROUP BY y", (naf, codes[0])))
+            closed = dict(conn.execute("SELECT CAST(substr(closed,1,4) AS INT) y, COUNT(*) FROM sirene_etab "
+                                       "WHERE naf=? AND commune=? AND closed!='' GROUP BY y", (naf, codes[0])))
+            out["naf"].append({"c": naf, "l": short, "full": naf_labels.get(naf, naf),
+                               "n": [x[0] for x in n], "emp": [x[1] for x in n],
+                               "f": [[created.get(y, 0), closed.get(y, 0)] for y in out["years"]]})
+        # Big employers of the centre city: targets for company memberships
+        rows = conn.execute(
+            "SELECT e.name, e.naf, e.size FROM sirene_etab e WHERE e.commune=? AND e.closed='' "
+            "AND e.size GLOB '[2-5][0-9]' AND e.person=0 AND e.siret NOT LIKE 'hidden-%' "
+            "ORDER BY e.size DESC, e.name", (codes[0],)).fetchall()
+        bands = {"50–99": 0, "100–249": 0, "250–999": 0, "1 000 et plus": 0}
+        for _, _, size in rows:
+            m = SIZE_MIN.get(size, 0)
+            bands["50–99" if m < 100 else "100–249" if m < 250 else "250–999" if m < 1000 else "1 000 et plus"] += 1
+        out["employers"] = {"bands": bands, "total": len(rows),
+                            "top": [[clean(n), naf_labels.get(naf, naf), size] for n, naf, size in rows[:60]]}
+
+    out["bpe"] = []
+    if "bpe_city" in tables:
+        cnt = defaultdict(dict)
+        for city, typ, year, n in conn.execute("SELECT * FROM bpe_city"):
+            cnt[typ][city] = n
+            out["bpe_year"] = year
+        out["bpe"] = [{"c": t, "l": l, "n": [cnt[t].get(c["n"], 0) for c in cities]} for t, l in SPORT_BPE.items()]
+
+    out["ages"] = {}
+    if "pop_age" in tables:
+        ages = defaultdict(lambda: defaultdict(dict))
+        for city, year, age, pop in conn.execute("SELECT city, year, age, pop FROM pop_age WHERE sex='_T'"):
+            ages[city][year][age] = round(pop)
+        out["ages"] = ages
+
+    # Sport jobs: latest 12-month offers, a year earlier, jobseekers, hires over 12 months
+    def figures(atype, act, terr):
+        def series(ind, nom):
+            return [v for _, v in conn.execute(
+                "SELECT period, value FROM stats WHERE indicator=? AND activity_type=? AND activity=? "
+                "AND territory=? AND nomenclature=? ORDER BY period", (ind, atype, act, terr, nom))]
+        o, d, e = series("offres", "TOFF-CUMUL12MOIS"), series("demandeurs", "ABC"), series("embauches", "TOUT-TOUTE")
+        if not (o or d or e):
+            return None
+        return [o[-1] if o else None, o[-5] if len(o) >= 5 else None, d[-1] if d else None,
+                sum(e[-4:]) if e else None]
+    jobs = []
+    for code, short in SPORT_ROMES.items():
+        t = tension.get(code)
+        lvl = t[max(t)][0] if t else None
+        jobs.append({"c": code, "l": short, "full": labels.get(("ROME", code), code), "t": lvl,
+                     "v": [figures("ROME", code, terr) for terr in GYM_TERR]})
+    for n in SPORT_NAF88:
+        jobs.append({"c": n, "l": "Secteur : " + labels.get(("NAF88", n), n), "sector": True,
+                     "v": [figures("NAF88", n, terr) for terr in GYM_TERR]})
+    out["jobs"] = jobs
+    terr = dict(conn.execute("SELECT code, label FROM territories"))
+    out["terr"] = [terr.get(t, t).title() if t in ("28", "FR") else terr.get(t, t) for t in GYM_TERR]
+    return out
+
+
 def main():
     if not os.path.exists(DB_PATH):
         raise SystemExit("No jobs.db yet — run collect.py first.")
@@ -138,6 +232,7 @@ def main():
         "companies": companies, "factors": FACTORS,
         "focus": [{"key": k, **v} for k, v in FOCUS.items()],
         "local": local,
+        "gym": load_gym(conn, labels, tension),
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     with open(OUT_PATH, "w", encoding="utf-8") as f:
@@ -206,13 +301,15 @@ code{background:var(--soft);padding:1px 5px;border-radius:4px}
 .pin{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:5px 10px;cursor:pointer;font:inherit}
 #cmp{margin-bottom:14px}#cmp .chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
 .chip{padding:4px 10px;font-size:12px}.chip i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--soft);color:var(--ink);margin:1px 3px 1px 0;white-space:nowrap}
+#gView{flex-shrink:0}
 @media (max-width:600px){.spark{width:70px}td.l{min-width:160px}}
 </style></head><body>
 <header><div><h1>Tendances de l'emploi — Le Havre</h1><div class="sub" id="sub"></div></div>
 <div class="seg" id="themeSeg" role="group" aria-label="Thème d'affichage">
 <button data-mode="auto" aria-pressed="false">Auto</button><button data-mode="light" aria-pressed="false">Clair</button><button data-mode="dark" aria-pressed="false">Sombre</button></div></header>
 <main>
-<nav id="tabs"><button data-t="themes" class="on">Thèmes</button><button data-t="jobs">Métiers</button><button data-t="sectors">Secteurs d'activité</button><button data-t="local">Offre locale</button></nav>
+<nav id="tabs"><button data-t="themes" class="on">Thèmes</button><button data-t="jobs">Métiers</button><button data-t="sectors">Secteurs d'activité</button><button data-t="local">Offre locale</button><button data-t="gym">Salles de sport</button></nav>
 
 <section id="cmp" class="card" hidden>
  <div class="dh"><div><b>Comparaison</b> <span class="muted">· offres sur 12 mois glissants</span></div><button class="pin" id="cmpClear">Vider</button></div>
@@ -242,6 +339,51 @@ code{background:var(--soft);padding:1px 5px;border-radius:4px}
  <p class="note">Indice = densité au Havre ÷ moyenne des villes de comparaison × 100 (100 = même niveau). « Manque » = nombre d'établissements à ajouter pour atteindre
  la densité moyenne des autres villes. Une activité sous-représentée n'est pas forcément une opportunité : vérifiez la demande (population, revenus, emplois) et la concurrence voisine.
  Sirene compte aussi les micro-entreprises peu actives : cochez « avec salariés » pour une vue plus prudente.</p>
+</section>
+
+<section id="v-gym" hidden>
+ <div class="card"><div class="dh"><div><h2 style="margin:0 0 4px;font-size:18px">Salles de sport — ville du Havre</h2>
+  <p class="muted" style="margin:0" id="gIntro"></p></div>
+  <div class="seg" id="gView" role="group" aria-label="Vue"><button data-v="comp" aria-pressed="true">Concurrents</button><button data-v="market" aria-pressed="false">Marché</button></div></div>
+  <div class="kp" id="gKpi"></div>
+  <b>Pistes pour développer une salle existante</b><ul id="gIdeas" style="margin:6px 0 0;padding-left:20px"></ul></div>
+
+ <div id="g-comp">
+  <div class="row" style="margin-top:14px"><input type="search" id="gq" placeholder="Rechercher une salle, une adresse, un atout (ex. sauna)…">
+   <select id="gCat"></select>
+   <select id="gSort"><option value="price">Trier : prix croissant</option><option value="rating">Trier : meilleure note</option>
+    <option value="reviews">Trier : nombre d'avis</option><option value="perks">Trier : nombre d'atouts</option><option value="name">Trier : nom</option></select></div>
+  <div class="tw"><table><thead><tr><th>Salle</th><th>Type</th><th class="n">Prix dès</th><th>Engagement</th><th class="n">Frais d'entrée</th><th class="n">Note</th><th>Atouts</th></tr></thead>
+   <tbody id="gtb"></tbody></table></div>
+  <p class="note" id="gcnt"></p>
+  <div class="two">
+   <div class="card"><b>Prix d'entrée par mois</b> <span class="muted">(formule la moins chère, ramenée au mois)</span><div class="cw" id="gPriceWrap"><canvas id="gPrice"></canvas></div></div>
+   <div class="card"><b>Qui propose quoi</b> <span class="muted">(du plus rare au plus courant)</span><div class="tw" style="margin-top:8px;max-height:420px;overflow:auto"><table><thead><tr><th>Atout</th><th class="n">Salles</th><th>Lesquelles</th></tr></thead><tbody id="gPerks"></tbody></table></div></div>
+  </div>
+  <div class="two">
+   <div class="card"><b>À surveiller</b><ul id="gWatch" style="padding-left:20px"></ul></div>
+   <div class="card"><b>Autres lieux recensés</b> <span class="muted">(pas d'offre détaillée trouvée)</span><ul id="gOthers" style="padding-left:20px"></ul></div>
+  </div>
+  <p class="note" id="gAbout"></p>
+ </div>
+
+ <div id="g-market" hidden>
+  <div class="two">
+   <div class="card"><b>Offre sportive pour 10 000 habitants</b> <span class="muted">(ville seule, sans les communes voisines)</span><div class="cw"><canvas id="gDens"></canvas></div></div>
+   <div class="card"><div class="dh"><b>Ouvertures et fermetures au Havre</b><select id="gFlowNaf"></select></div><div class="cw"><canvas id="gFlow"></canvas></div></div>
+  </div>
+  <div class="tw" style="margin-top:14px"><table><thead id="gDth"></thead><tbody id="gDtb"></tbody></table></div>
+  <p class="note">Sirene = établissements actifs déclarés au Havre (y compris coachs indépendants en micro-entreprise) ; la liste détaillée ne couvre que la zone du Havre, d'où « — » pour les autres villes. BPE = équipements recensés par l'INSEE, comparables entre villes. Indice = densité au Havre ÷ moyenne de Rouen, Caen et Brest × 100. « Manque » = nombre à ajouter pour atteindre cette moyenne.</p>
+  <div class="two">
+   <div class="card"><b>Âge des habitants</b> <span class="muted" id="gAgeSub"></span><div class="cw"><canvas id="gAge"></canvas></div><p class="note" id="gAgeNote"></p></div>
+   <div class="card"><b>Entreprises de 50 salariés et plus dans la ville</b> <span class="muted">(cibles pour des abonnements entreprise)</span>
+    <div class="kp" id="gEmpK"></div><div class="tw" style="max-height:330px;overflow:auto"><table><thead><tr><th>Établissement</th><th>Activité</th><th class="n">Salariés</th></tr></thead><tbody id="gEmp"></tbody></table></div></div>
+  </div>
+  <h3>Métiers du sport : Le Havre, Normandie et autres villes</h3>
+  <div class="tw"><table><thead id="gJth"></thead><tbody id="gJtb"></tbody></table></div>
+  <p class="note">Source France Travail. Le Havre = zone de l'agence France Travail (ville et communes voisines), pas la ville seule. Chiffres arrondis à la dizaine : à lire comme des ordres de grandeur.
+   Tension (1 à 5) mesurée sur le bassin d'emploi du Havre. Offres/dem. = offres sur 12 mois par demandeur d'emploi : plus c'est bas, plus il est facile de recruter.</p>
+ </div>
 </section>
 
 <section id="v-list" hidden>
@@ -469,11 +611,13 @@ document.getElementById("tabs").onclick = e=>{
   const b = e.target.closest("button"); if (!b) return;
   view = b.dataset.t;
   document.querySelectorAll("#tabs button").forEach(x=>x.classList.toggle("on", x===b));
-  const isFocus = view.startsWith("focus:"), isLocal = view==="local";
+  const isFocus = view.startsWith("focus:"), isLocal = view==="local", isGym = view==="gym";
   document.getElementById("v-themes").hidden = view!=="themes";
-  document.getElementById("v-list").hidden = view==="themes" || isFocus || isLocal;
+  document.getElementById("v-list").hidden = view==="themes" || isFocus || isLocal || isGym;
   document.getElementById("v-focus").hidden = !isFocus;
   document.getElementById("v-local").hidden = !isLocal;
+  document.getElementById("v-gym").hidden = !isGym;
+  if (isGym){ document.getElementById("detail").hidden = true; renderGym(); return; }
   if (isLocal){ document.getElementById("detail").hidden = true; setDomLocal(); renderLocal(); return; }
   if (isFocus){ document.getElementById("detail").hidden = true; renderFocus(D.focus.find(f=>"focus:"+f.key===view)); return; }
   document.getElementById("detail").hidden = true;
@@ -726,6 +870,240 @@ document.getElementById("lSrc").onclick = e=>{ const b=e.target.closest("button"
 document.getElementById("ltb").onclick = e=>{ const tr=e.target.closest("tr[data-c]"); if(!tr) return;
   document.querySelectorAll("#ltb tr.sel").forEach(x=>x.classList.remove("sel")); tr.classList.add("sel");
   showLocal(window._lrows.find(r=>r.c===tr.dataset.c)); };
+
+// ---- gym market: competitors (gyms.json) and figures for the centre city (sport.py) ----------
+const G = D.gym || {}, GJ = G.gyms;
+const PERMONTH = {"4sem":13/12, "mois":1, "semaine":52/12, "an":1/12};
+const UNIT = {"4sem":"/4 sem.", "mois":"/mois", "semaine":"/semaine", "an":"/an", "seance":"/séance", "carnet":""};
+const GSIZE = {"21":"50–99","22":"100–199","31":"200–249","32":"250–499","41":"500–999","42":"1 000–1 999","51":"2 000–4 999","52":"5 000–9 999","53":"10 000+"};
+const eur = v => v==null ? "—" : v.toLocaleString("fr-FR", {minimumFractionDigits: v%1 ? 2 : 0, maximumFractionDigits: 2}) + " €";
+const median = a => { if (!a.length) return null; const s=[...a].sort((x,y)=>x-y), m=s.length>>1; return s.length%2 ? s[m] : (s[m-1]+s[m])/2; };
+const share = (part, tot) => tot ? 100*part/tot : null;
+let gView = "comp", gReady = false;
+const gCharts = {};
+function gChart(id, cfg){ if (gCharts[id]) gCharts[id].destroy(); gCharts[id] = new Chart(document.getElementById(id), cfg); return gCharts[id]; }
+const barOpts = (horizontal, fmtv) => ({responsive:true, maintainAspectRatio:false, indexAxis: horizontal ? "y" : "x",
+  plugins:{legend:{labels:{color:C("--muted"), boxWidth:12}}, tooltip:{...tipColors(), callbacks:{label:c=>`${c.dataset.label} : ${fmtv(c.raw)}`}}},
+  scales:{x:{ticks:{color:C("--muted")}, grid:{color:C("--line"), display: horizontal}, beginAtZero:true},
+          y:{ticks:{color:C("--muted")}, grid:{color:C("--line"), display: !horizontal}, beginAtZero:true}}});
+
+function gymInfo(g, i){
+  const subs = (g.plans||[]).filter(p=>PERMONTH[p.unit] && !p.reduced).map(p=>({p, m:p.price*PERMONTH[p.unit]})).sort((a,b)=>a.m-b.m);
+  const sess = (g.plans||[]).filter(p=>p.unit==="seance" || p.unit==="carnet").map(p=>p.unit==="carnet" ? p.price/(p.count||1) : p.price);
+  return {...g, i, month: subs.length ? subs[0].m : null, unc: subs.length ? !!subs[0].p.uncertain : false,
+          session: sess.length ? Math.min(...sess) : null, np: (g.perks||[]).length};
+}
+const GYMS = GJ ? GJ.gyms.map(gymInfo) : [];
+const CATS = [...new Set(GYMS.map(g=>g.cat))];
+const priceLabel = g => g.month!=null ? `${g.unc?"≈ ":""}${Math.round(g.month)} €<span class="muted">/mois</span>`
+  : g.session!=null ? `${eur(g.session)}<span class="muted">/séance</span>` : `<span class="muted">non publié</span>`;
+const perkName = k => (GJ && GJ.perks[k]) || k;
+const tags = ks => ks.map(k=>`<span class="tag">${esc(perkName(k))}</span>`).join("");
+
+// figures for the centre city
+function cityDens(row){        // row.n = counts per city (Le Havre first)
+  const A = G.cities || [], dens = row.n.map((v,i)=>v!=null && A[i] && A[i].pop ? v/A[i].pop*1e4 : null);
+  const others = dens.slice(1).filter(v=>v!=null), avg = others.length ? others.reduce((a,b)=>a+b,0)/others.length : null;
+  return {dens, avg, idx: avg ? 100*dens[0]/avg : null, gap: avg!=null && A[0] ? Math.round(avg*A[0].pop/1e4 - row.n[0]) : null};
+}
+const AGES = [["Y_LT15","0–14"],["Y15T24","15–24"],["Y25T39","25–39"],["Y40T54","40–54"],["Y55T64","55–64"],["Y65T79","65–79"],["Y_GE80","80+"]];
+function ageData(city){
+  const a = (G.ages||{})[city] || {}, ys = Object.keys(a).sort();
+  return {ys, first: a[ys[0]] || {}, last: a[ys[ys.length-1]] || {}};
+}
+const jobFig = (j, t) => (j.v||[])[t] || null;     // [offers 12 m, a year before, jobseekers, hires 12 m]
+const ratio = f => f && f[0]!=null && f[2] ? f[0]/f[2] : null;
+const r2 = v => v==null ? "—" : v.toFixed(2).replace(".",",");
+
+function gymIdeas(){
+  const out = [];
+  const fit = GYMS.filter(g=>(g.cat==="Low cost" || g.cat==="Fitness / musculation") && g.month!=null);
+  const ms = fit.map(g=>g.month), med = median(ms);
+  const low = fit.filter(g=>g.month<=28).map(g=>g.name.replace(/ \(.*\)/,""));
+  const box = GYMS.filter(g=>g.cat==="CrossFit / Hyrox" && g.month!=null).map(g=>g.month);
+  const ems = GYMS.filter(g=>g.cat.startsWith("Électro") && g.month!=null).map(g=>g.month);
+  if (ms.length) out.push(`<b>Prix</b> : les abonnements fitness vont de ${Math.round(Math.min(...ms))} à ${Math.round(Math.max(...ms))} €/mois (médiane ${Math.round(med)} €).
+    ${low.length ? `Le bas du marché est tenu par ${low.join(", ")}. ` : ""}Une salle existante gagne rarement sur le prix face au low cost : elle gagne sur l'accompagnement, l'ambiance et les créneaux.
+    ${box.length ? `Les box CrossFit facturent ${Math.round(Math.min(...box))} à ${Math.round(Math.max(...box))} €/mois` : ""}${ems.length ? ` et l'électrostimulation plus de ${Math.round(Math.min(...ems)/10)*10} €/mois` : ""} : le coaching se vend cher.`);
+  if (GJ){
+    const cnt = Object.keys(GJ.perks).map(k=>({k, n:GYMS.filter(g=>(g.perks||[]).includes(k)).length})).sort((a,b)=>a.n-b.n);
+    const rare = cnt.filter(x=>x.n<=2);
+    if (rare.length) out.push(`<b>Atouts rares au Havre</b> : ${rare.map(x=>`${esc(perkName(x.k)).toLowerCase()} (${x.n ? x.n+" salle"+(x.n>1?"s":"") : "aucune"})`).join(", ")}.
+      Ce sont les moyens les plus simples de se démarquer ; plusieurs coûtent peu (pause d'abonnement, tarif senior, essai à petit prix, cours enfants).`);
+  }
+  const f120 = (G.bpe||[]).find(b=>b.c==="F120"), A = G.cities||[];
+  if (f120 && A.length){ const d = cityDens(f120);
+    if (d.idx!=null && d.idx<85) out.push(`<b>Ville sous-équipée</b> : ${fmt(f120.n[0])} salles de remise en forme recensées (BPE ${G.bpe_year||""}) pour ${fmt(A[0].pop)} habitants,
+      soit ${d1(d.dens[0])} pour 10 000 contre ${d1(d.avg)} en moyenne à ${A.slice(1).map(a=>a.n).join(", ")}. Il manquerait environ ${fmt(d.gap)} salles pour atteindre leur niveau :
+      une partie des Havrais ne fréquente aucune salle, c'est la clientèle à aller chercher.`); }
+  const lh = ageData("Le Havre"), others = A.slice(1).map(a=>ageData(a.n));
+  if (lh.ys.length>1){
+    const s65 = x => (x.Y65T79||0)+(x.Y_GE80||0);
+    const n65 = s65(lh.last), g65 = share(n65 - s65(lh.first), s65(lh.first)), gT = share((lh.last._T||0)-(lh.first._T||0), lh.first._T);
+    const sh = share(n65, lh.last._T), osh = others.map(o=>share(s65(o.last), o.last._T)).filter(v=>v!=null);
+    const seniorG = GYMS.filter(g=>(g.perks||[]).includes("senior")).map(g=>g.name);
+    const apa = D.gym.jobs.filter(j=>j.c==="G1220" || j.c==="G1215").map(j=>jobFig(j,0)).filter(Boolean);
+    out.push(`<b>Seniors</b> : ${fmt(n65)} Havrais ont 65 ans ou plus (${Math.round(sh)} % des habitants${osh.length ? `, contre ${Math.round(Math.min(...osh))}–${Math.round(Math.max(...osh))} % dans les autres villes` : ""}),
+      ${pct(g65)} depuis ${lh.ys[0]} alors que la population totale évolue de ${pct(gT)}. ${seniorG.length ? `Seule${seniorG.length>1?"s":""} ${seniorG.join(", ")} affiche${seniorG.length>1?"nt":""} un tarif senior` : "Aucune salle n'affiche de tarif senior"},
+      et aucune offre « sport santé » n'apparaît dans les offres publiées. Pistes : créneaux en journée, renforcement et équilibre, partenariat avec médecins et kinés (activité physique sur ordonnance).
+      ${apa.length ? `Les éducateurs APA / sport santé restent rares localement (${fmt(apa.reduce((s,f)=>s+(f[2]||0),0))} demandeurs d'emploi).` : ""}`);
+  }
+  const E = G.employers;
+  if (E && E.total) out.push(`<b>Entreprises</b> : ${fmt(E.total)} établissements de 50 salariés et plus dans la ville, dont ${fmt(E.bands["250–999"]+E.bands["1 000 et plus"])} de 250 et plus.
+    Une offre entreprise (tarif négocié avec le CSE, séances sur site ou à la pause déjeuner, défis entre équipes) apporte des membres par groupes entiers.`);
+  const coach = D.gym.jobs.filter(j=>j.c==="G1204" || j.c==="G1217");
+  const sum = (t,k) => coach.reduce((s,j)=>s+((jobFig(j,t)||[])[k]||0),0);
+  if (coach.length && sum(0,2)) out.push(`<b>Recruter des coachs</b> : ${fmt(sum(0,2))} demandeurs d'emploi éducateurs sportifs ou moniteurs de salle pour ${fmt(sum(0,0))} offres sur 12 mois dans la zone du Havre
+    (Normandie : ${fmt(sum(4,2))} pour ${fmt(sum(4,0))}). Les candidats ne manquent pas : renforcer le coaching en salle est faisable rapidement.`);
+  const gymNaf = (G.naf||[]).find(n=>n.c==="93.13Z"), yrs = G.years||[], cur = new Date().getFullYear();
+  if (gymNaf){
+    const idx = yrs.map((y,i)=>[y,i]).filter(([y])=>y<cur).slice(-3);
+    const c = idx.reduce((s,[,i])=>s+gymNaf.f[i][0],0), f = idx.reduce((s,[,i])=>s+gymNaf.f[i][1],0);
+    out.push(`<b>Concurrence</b> : ${c} salles de sport créées et ${f} fermées dans la ville en ${idx[0][0]}–${idx[idx.length-1][0]} (Sirene).
+      ${(GJ && GJ.watch||[]).length ? `À surveiller : ${GJ.watch.map(w=>esc(w.name)).join(", ")}. ` : ""}Le bon moment pour fidéliser : engagement souple, parrainage, suivi des nouveaux inscrits pendant leurs premières semaines.`);
+  }
+  const indep = GYMS.filter(g=>g.rating>=4.8 && g.reviews>=100).sort((a,b)=>b.reviews-a.reviews).slice(0,4);
+  const chainLow = GYMS.filter(g=>g.rating!=null && g.rating<4.3 && g.reviews>=100);
+  if (indep.length) out.push(`<b>Avis Google</b> : les salles les mieux notées ont 4,8 à 5/5 avec plus de 100 avis (${indep.map(g=>`${esc(g.name)} ${g.rating.toFixed(1).replace(".",",")} · ${g.reviews} avis`).join(" ; ")})
+    ${chainLow.length ? `, quand ${chainLow.map(g=>esc(g.name)).join(" et ")} plafonne${chainLow.length>1?"nt":""} à ${Math.max(...chainLow.map(g=>g.rating)).toFixed(1).replace(".",",")}` : ""}.
+    Demander un avis après les premières séances est l'outil le moins cher pour être choisi.`);
+  return out;
+}
+
+function renderGym(){
+  if (!GJ){ document.getElementById("gIntro").innerHTML = "Pas de fichier <code>gyms.json</code> : relevé des concurrents absent."; return; }
+  if (!gReady){
+    gReady = true;
+    const A = G.cities||[], lh = ageData("Le Havre");
+    const fit = GYMS.filter(g=>(g.cat==="Low cost" || g.cat==="Fitness / musculation") && g.month!=null).map(g=>g.month);
+    const f120 = (G.bpe||[]).find(b=>b.c==="F120"), d120 = f120 ? cityDens(f120) : null;
+    const s65 = lh.ys.length ? (lh.last.Y65T79||0)+(lh.last.Y_GE80||0) : null;
+    document.getElementById("gIntro").textContent = `${GYMS.length} salles et studios détaillés, relevé du ${GJ.checked.split("-").reverse().join("/")} (sites des salles, annuaires, avis Google). `
+      + `Chiffres de la ville seule : ${A.length ? fmt(A[0].pop)+" habitants" : ""}. Pour l'emploi, zone de l'agence France Travail et Normandie.`;
+    document.getElementById("gKpi").innerHTML = `
+      <div><b>${GYMS.length + (GJ.others||[]).length}</b><span>lieux recensés (${GYMS.length} détaillés)</span></div>
+      <div><b>${fit.length ? Math.round(median(fit))+" €" : "—"}</b><span>prix médian d'un abonnement fitness, par mois</span></div>
+      ${d120 ? `<div><b class="${d120.idx<80?"down":""}">${d1(d120.dens[0])}</b><span>salles de remise en forme pour 10 000 hab. (autres villes : ${d1(d120.avg)})</span></div>` : ""}
+      ${s65!=null ? `<div><b>${Math.round(share(s65, lh.last._T))} %</b><span>d'habitants de 65 ans et plus (${fmt(s65)})</span></div>` : ""}
+      ${G.employers ? `<div><b>${fmt(G.employers.total)}</b><span>entreprises de 50 salariés et plus</span></div>` : ""}`;
+    document.getElementById("gIdeas").innerHTML = gymIdeas().map(x=>`<li style="margin-bottom:6px">${x}</li>`).join("");
+    document.getElementById("gCat").innerHTML = `<option value="">Tous les types</option>${CATS.map(c=>`<option>${esc(c)}</option>`).join("")}`;
+    document.getElementById("gWatch").innerHTML = (GJ.watch||[]).map(w=>`<li><b>${esc(w.name)}</b> — ${esc(w.text)} <a href="${esc(w.src)}" target="_blank" rel="noopener" style="color:var(--accent)">source</a></li>`).join("");
+    document.getElementById("gOthers").innerHTML = (GJ.others||[]).map(o=>`<li>${esc(o.name)} <span class="muted">· ${esc(o.cat)} · ${esc(o.address)}</span></li>`).join("");
+    document.getElementById("gAbout").innerHTML = `${esc(GJ.about)} ${(GJ.market_sources||[]).map(m=>`<a href="${esc(m.src)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(m.label)}</a>`).join(" · ")}`;
+    ["gq","gCat","gSort"].forEach(id=>document.getElementById(id).addEventListener("input", renderGymTable));
+    document.getElementById("gtb").onclick = e=>{
+      if (e.target.closest("a")) return;
+      const tr = e.target.closest("tr[data-i]"); if (!tr) return;
+      const next = tr.nextElementSibling;
+      if (next && next.classList.contains("gx")) { next.remove(); tr.classList.remove("sel"); return; }
+      tr.classList.add("sel"); tr.insertAdjacentHTML("afterend", gymDetail(GYMS[+tr.dataset.i]));
+    };
+    document.getElementById("gView").onclick = e=>{ const b=e.target.closest("button"); if (!b) return; gView=b.dataset.v;
+      document.querySelectorAll("#gView button").forEach(x=>x.setAttribute("aria-pressed", x===b)); showGymView(); };
+    document.getElementById("gFlowNaf").innerHTML = (G.naf||[]).map(n=>`<option value="${n.c}">${esc(n.l)}</option>`).join("");
+    document.getElementById("gFlowNaf").oninput = drawGymFlow;
+  }
+  showGymView();
+}
+function showGymView(){
+  document.getElementById("g-comp").hidden = gView!=="comp";
+  document.getElementById("g-market").hidden = gView!=="market";
+  if (gView==="comp") { renderGymTable(); drawGymPrices(); renderGymPerks(); } else renderGymMarket();
+}
+function renderGymTable(){
+  const norm = t => String(t||"").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const q = norm(document.getElementById("gq").value.trim()), cat = document.getElementById("gCat").value, k = document.getElementById("gSort").value;
+  let rows = GYMS.filter(g=>(!cat || g.cat===cat) && (!q || norm([g.name, g.address, g.cat, g.kind, g.notes, ...(g.perks||[]).map(perkName)].join(" ")).includes(q)));
+  const key = {price:g=>-(g.month ?? (g.session!=null ? 500+g.session : 1e6)), rating:g=>(g.rating??0)*1e4+(g.reviews??0), reviews:g=>g.reviews??-1, perks:g=>g.np, name:g=>0}[k];
+  rows.sort((a,b)=>key(b)-key(a) || a.name.localeCompare(b.name,"fr"));
+  document.getElementById("gtb").innerHTML = rows.map(g=>`<tr data-i="${g.i}">
+    <td class="l"><b>${esc(g.name)}</b><div class="muted" style="font-size:12px">${esc(g.address)}</div></td>
+    <td class="l" style="min-width:140px">${esc(g.cat)}<div class="muted" style="font-size:12px">${esc(g.kind)}</div></td>
+    <td class="n">${priceLabel(g)}</td><td class="l" style="min-width:150px;font-size:12px">${esc(g.commit||"—")}</td>
+    <td class="n">${g.fee==null ? "—" : g.fee===0 ? "offerts" : eur(g.fee)}</td>
+    <td class="n">${g.rating!=null ? `★ ${g.rating.toFixed(1).replace(".",",")}<div class="muted" style="font-size:12px">${g.reviews!=null ? fmt(g.reviews)+" avis" : esc(g.rating_src)}</div>` : "—"}</td>
+    <td class="l" style="min-width:240px">${tags(g.perks||[])}</td></tr>`).join("");
+  document.getElementById("gcnt").textContent = `${rows.length} salle(s). Cliquez sur une ligne pour les formules, horaires et sources. ≈ = prix d'annuaire ou « à partir de », à vérifier. Prix dès = formule la moins chère ramenée au mois (4 semaines × 13 / 12).`;
+}
+function gymDetail(g){
+  const plans = (g.plans||[]).map(p=>`<tr style="cursor:default"><td class="l">${esc(p.n)}${p.uncertain?' <span class="muted">(à vérifier)</span>':""}</td>
+    <td class="n">${eur(p.price)}<span class="muted">${p.unit==="carnet" ? ` (${p.count} séances)` : UNIT[p.unit]||""}</span></td>
+    <td class="n">${PERMONTH[p.unit] && p.unit!=="mois" ? Math.round(p.price*PERMONTH[p.unit])+" €/mois" : p.unit==="carnet" && p.count ? eur(Math.round(p.price/p.count*100)/100)+"/séance" : ""}</td>
+    <td class="l" style="font-size:12px">${esc(p.commit||"")}</td><td class="l" style="font-size:12px">${esc(p.inc||"")}</td></tr>`).join("");
+  return `<tr class="gx" style="cursor:default;background:var(--soft)"><td colspan="7" style="white-space:normal">
+    ${plans ? `<div class="tw" style="margin:4px 0 10px"><table><thead><tr><th>Formule</th><th class="n">Prix</th><th class="n">Équivalent</th><th>Engagement</th><th>Inclus</th></tr></thead><tbody>${plans}</tbody></table></div>`
+      : `<p class="muted">Aucun tarif publié trouvé.</p>`}
+    ${g.hours ? `<div><b>Horaires</b> : ${esc(g.hours)}</div>` : ""}
+    ${g.notes ? `<div style="margin-top:4px">${esc(g.notes)}</div>` : ""}
+    ${g.rating!=null ? `<div class="muted" style="margin-top:4px">Note : ${esc(g.rating_src)}</div>` : ""}
+    <div style="margin-top:6px;font-size:12px">Sources ${g.official ? "(dont site officiel)" : "(annuaires / comparatifs)"} : ${(g.sources||[]).map((s,i)=>`<a href="${esc(s)}" target="_blank" rel="noopener" style="color:var(--accent)">${i+1}</a>`).join(" · ")}</div>
+  </td></tr>`;
+}
+function drawGymPrices(){
+  const rows = GYMS.filter(g=>g.month!=null).sort((a,b)=>a.month-b.month);
+  document.getElementById("gPriceWrap").style.height = (rows.length*26+60)+"px";
+  gChart("gPrice", {type:"bar", data:{labels:rows.map(g=>g.name.replace(/ \(.*\)/,"")), datasets:CATS.map((c,ci)=>({label:c, _pal:ci%6, backgroundColor:PAL[ci%6], borderColor:PAL[ci%6], borderRadius:4,
+      data:rows.map(g=>g.cat===c ? Math.round(g.month) : null), skipNull:true}))},
+    options:{...barOpts(true, v=>v+" €/mois"), scales:{x:{stacked:true, ticks:{color:C("--muted")}, grid:{color:C("--line")}, beginAtZero:true}, y:{stacked:true, ticks:{color:C("--muted"), autoSkip:false}, grid:{display:false}}}}});
+}
+function renderGymPerks(){
+  const rows = Object.keys(GJ.perks).map(k=>({k, gs:GYMS.filter(g=>(g.perks||[]).includes(k))})).sort((a,b)=>a.gs.length-b.gs.length);
+  document.getElementById("gPerks").innerHTML = rows.map(r=>`<tr style="cursor:default"><td class="l">${esc(perkName(r.k))}${r.gs.length<=2 ? ' <span class="tag" style="background:var(--lv4)">rare</span>' : ""}</td>
+    <td class="n">${r.gs.length} / ${GYMS.length}</td><td class="l" style="font-size:12px">${r.gs.map(g=>esc(g.name.replace(/ \(.*\)/,""))).join(", ") || '<span class="muted">aucune trouvée</span>'}</td></tr>`).join("");
+}
+function drawGymFlow(){
+  const n = (G.naf||[]).find(x=>x.c===document.getElementById("gFlowNaf").value); if (!n) return;
+  const yrs = G.years, cur = new Date().getFullYear();
+  gChart("gFlow", {type:"bar", data:{labels:yrs.map(y=>y===cur ? y+" (en cours)" : y), datasets:[
+      {label:"Créations", data:n.f.map(v=>v[0]), _pal:3, backgroundColor:PAL[3], borderColor:PAL[3], borderRadius:3},
+      {label:"Fermetures", data:n.f.map(v=>v[1]), _pal:4, backgroundColor:PAL[4], borderColor:PAL[4], borderRadius:3}]}, options:barOpts(false, v=>v)});
+}
+function renderGymMarket(){
+  const A = G.cities||[];
+  const rows = [...(G.naf||[]).map(n=>({...n, src:"Sirene"})), ...(G.bpe||[]).map(b=>({...b, src:"BPE "+(G.bpe_year||"")}))].map(r=>({...r, ...cityDens(r)}));
+  const pick = ["93.13Z","F120","85.51Z","F114","F129","F127","F101"], sel = pick.map(c=>rows.find(r=>r.c===c)).filter(r=>r && r.avg!=null);
+  gChart("gDens", {type:"bar", data:{labels:sel.map(r=>r.c==="93.13Z" ? "Salles de sport (Sirene)" : r.l),
+      datasets:A.map((a,i)=>({label:a.n, _pal:i, backgroundColor:PAL[i], borderColor:PAL[i], borderRadius:3, data:sel.map(r=>r.dens[i])}))},
+    options:barOpts(true, v=>d1(v)+" pour 10 000 hab.")});
+  document.getElementById("gDth").innerHTML = `<tr><th>Activité ou équipement</th><th>Source</th><th class="n">Le Havre</th><th class="n">/10 000 hab.</th>
+    ${A.slice(1).map(a=>`<th class="n">${esc(a.n)}</th>`).join("")}<th class="n">Indice</th><th class="n">Manque</th></tr>`;
+  document.getElementById("gDtb").innerHTML = rows.map(r=>`<tr style="cursor:default"><td class="l">${esc(r.l)} <span class="muted">${esc(r.c)}</span></td><td class="muted">${esc(r.src)}</td>
+    <td class="n">${fmt(r.n[0])}</td><td class="n">${d1(r.dens[0])}</td>${r.dens.slice(1).map(v=>`<td class="n muted">${d1(v)}</td>`).join("")}
+    <td class="n ${r.idx==null?"":r.idx<80?"down":r.idx>125?"up":""}">${r.idx==null?"—":Math.round(r.idx)}</td><td class="n">${r.gap>0?fmt(r.gap):"—"}</td></tr>`).join("");
+  drawGymFlow();
+  // ages
+  const lh = ageData("Le Havre"), oth = A.slice(1).map(a=>ageData(a.n)).filter(o=>o.ys.length);
+  if (lh.ys.length){
+    const shares = x => AGES.map(([k])=>share(x[k]||0, x._T));
+    const avgO = AGES.map((_,i)=>{ const v = oth.map(o=>shares(o.last)[i]); return v.reduce((a,b)=>a+b,0)/(v.length||1); });
+    document.getElementById("gAgeSub").textContent = `(part des habitants en ${lh.ys[lh.ys.length-1]}, INSEE)`;
+    gChart("gAge", {type:"bar", data:{labels:AGES.map(a=>a[1]), datasets:[
+        {label:"Le Havre", _pal:0, backgroundColor:PAL[0], borderColor:PAL[0], borderRadius:3, data:shares(lh.last)},
+        {label:`Moyenne ${A.slice(1).map(a=>a.n).join(", ")}`, _pal:5, backgroundColor:PAL[5], borderColor:PAL[5], borderRadius:3, data:avgO}]},
+      options:barOpts(false, v=>(Math.round(v*10)/10).toString().replace(".",",")+" %")});
+    const ch = k => pct(share((lh.last[k]||0)-(lh.first[k]||0), lh.first[k]));
+    document.getElementById("gAgeNote").textContent = `Au Havre entre ${lh.ys[0]} et ${lh.ys[lh.ys.length-1]} : population ${ch("_T")}, 25–39 ans ${ch("Y25T39")}, 40–54 ans ${ch("Y40T54")}, 65–79 ans ${ch("Y65T79")}, 80 ans et plus ${ch("Y_GE80")}.`;
+  }
+  // employers
+  const E = G.employers;
+  if (E){
+    document.getElementById("gEmpK").innerHTML = Object.entries(E.bands).map(([k,v])=>`<div><b>${fmt(v)}</b><span>${k} salariés</span></div>`).join("");
+    document.getElementById("gEmp").innerHTML = E.top.map(e=>`<tr style="cursor:default"><td class="l">${esc(e[0])}</td><td class="l" style="font-size:12px">${esc(e[1])}</td><td class="n">${esc(GSIZE[e[2]]||"—")}</td></tr>`).join("");
+  }
+  // jobs
+  const T = G.terr||[];
+  document.getElementById("gJth").innerHTML = `<tr><th rowspan="2">Métier</th><th colspan="6" style="text-align:center">${esc(T[0])} (zone France Travail)</th><th colspan="3" style="text-align:center">${esc(T[4])}</th><th colspan="4" style="text-align:center">Offres par demandeur</th></tr>
+    <tr><th class="n">Offres 12 m</th><th class="n">Évol.</th><th class="n">Demandeurs</th><th class="n">Offres/dem.</th><th class="n">Embauches 12 m</th><th class="n">Tension</th>
+    <th class="n">Offres 12 m</th><th class="n">Demandeurs</th><th class="n">Offres/dem.</th>${[1,2,3,5].map(i=>`<th class="n">${esc(T[i])}</th>`).join("")}</tr>`;
+  document.getElementById("gJtb").innerHTML = G.jobs.map(j=>{
+    const h = jobFig(j,0) || [], n = jobFig(j,4) || [];
+    const g = h[0]!=null && h[1] ? share(h[0]-h[1], h[1]) : null;
+    return `<tr style="cursor:default"><td class="l">${j.sector ? `<b>${esc(j.l)}</b>` : esc(j.l)} <span class="muted">${esc(j.c)}</span></td>
+      <td class="n">${fmt(h[0])}</td><td class="n ${cls(g)}">${pct(g)}</td><td class="n">${fmt(h[2])}</td><td class="n">${r2(ratio(h))}</td><td class="n">${fmt(h[3])}</td><td class="n">${j.t ?? "—"}</td>
+      <td class="n">${fmt(n[0])}</td><td class="n">${fmt(n[2])}</td><td class="n">${r2(ratio(n))}</td>${[1,2,3,5].map(i=>`<td class="n muted">${r2(ratio(jobFig(j,i)))}</td>`).join("")}</tr>`;
+  }).join("");
+}
 
 // ---- light / dark switch ------------------------------------------------------------
 function recolorCharts(){

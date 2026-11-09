@@ -41,6 +41,17 @@ than the other cities, and how many establishments that represents.
 
 Quick test: `python collect.py --limit 50 --skip-lbb`.
 
+### Gym market tab ("Salles de sport")
+
+- **Competitors**: `gyms.json`, a hand-made list of the gyms and studios in the city of
+  Le Havre (prices, plans, commitment, fees, perks, ratings, sources, date checked).
+  Edit it when prices change, then re-run `python dashboard.py`.
+- **Market**: sports facilities and population by age for the city itself
+  (`python collect_territory.py --city-only`, a few seconds), gym openings and closures
+  and large employers (Sirene), and sport jobs in Le Havre, Rouen, Caen, Brest,
+  Normandy and France (`python collect.py --only-sport`, under a minute).
+  Both are also part of the normal monthly runs. Jobs and activity codes are listed in `sport.py`.
+
 The statistics are published **quarterly**, so running `collect.py` once a month
 is enough. Each run refreshes everything; the API itself returns history back to 2020.
 

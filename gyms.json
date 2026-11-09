@@ -1,0 +1,376 @@
+{
+  "city": "Le Havre",
+  "checked": "2026-11-09",
+  "about": "Relevé manuel des offres publiées (sites des salles, annuaires, comparatifs). Les prix changent souvent : vérifiez avant de vous en servir. Tarifs réduits (étudiants…) exclus du « prix dès ». units : 4sem = par 4 semaines, mois, semaine, an, seance, carnet (prix du carnet, n = nombre de séances).",
+  "perks": {
+    "h24": "Ouvert 24h/24",
+    "d7": "Ouvert 7j/7",
+    "cours": "Cours collectifs coachés",
+    "video": "Cours vidéo / appli",
+    "coaching": "Coaching individuel inclus",
+    "small": "Petits groupes coachés",
+    "guest": "Invité / formule duo",
+    "network": "Accès à d'autres clubs",
+    "freeze": "Pause d'abonnement",
+    "massage": "Massage / hydromassage",
+    "sauna": "Sauna / espace détente",
+    "drinks": "Boissons incluses",
+    "body": "Analyse corporelle",
+    "pool": "Piscine / aqua",
+    "women": "Espace femmes",
+    "fight": "Boxe / combat",
+    "cross": "Cross-training / Hyrox",
+    "parking": "Parking",
+    "nocommit": "Formule sans engagement",
+    "student": "Tarif étudiant",
+    "senior": "Tarif senior",
+    "kids": "Cours enfants",
+    "trial": "Essai gratuit ou ≤ 10 €",
+    "sante": "Sport santé / sur ordonnance"
+  },
+  "gyms": [
+    {
+      "name": "Basic-Fit (3 clubs)", "brand": "Basic-Fit", "kind": "Chaîne", "cat": "Low cost",
+      "address": "11 rue Henri de Saint-Delis (24h/24) · 6-8 rue Docteur Piasceki (24h/24) · Espace Coty, 22 rue Casimir Périer",
+      "hours": "2 clubs 24h/24 7j/7 ; Coty : 6h–22h30 en semaine, 9h–19h le week-end",
+      "fee": 19.99, "commit": "52 semaines (option Flex sans engagement : +9,99 €/4 sem.)",
+      "plans": [
+        {"n": "Comfort", "price": 24.99, "unit": "4sem", "commit": "52 semaines", "inc": "Tous les clubs en France, appli, cours si le club en propose. Frais 19,99 €"},
+        {"n": "Premium", "price": 29.99, "unit": "4sem", "commit": "52 semaines", "inc": "Clubs d'Europe, fauteuils de massage, 1 invité par semaine. Frais 9,99 €"},
+        {"n": "Ultimate", "price": 34.99, "unit": "4sem", "commit": "52 semaines", "inc": "Invités illimités, boisson Yanga, pause incluse. Frais 4,99 €"},
+        {"n": "Flex (sans engagement)", "price": 34.98, "unit": "4sem", "commit": "Aucun, préavis 4 semaines", "inc": "Comfort sans engagement (Premium Flex 39,98 €, Ultimate Flex 44,98 €)"},
+        {"n": "Pass journée", "price": 11.99, "unit": "seance"}
+      ],
+      "perks": ["h24", "d7", "video", "guest", "network", "freeze", "massage", "drinks", "nocommit"],
+      "rating": null, "reviews": null, "rating_src": "",
+      "url": "https://www.basic-fit.com/fr-fr/salles-de-sport/le-havre",
+      "sources": ["https://www.basic-fit.com/fr-fr/salles-de-sport/le-havre", "https://www.basic-fit.com/fr-fr/prix"],
+      "official": true,
+      "notes": "Le leader du low cost au Havre : 3 clubs dont 2 ouverts 24h/24. Tarifs nationaux."
+    },
+    {
+      "name": "L'Orange Bleue Grand Hameau", "brand": "L'Orange Bleue", "kind": "Chaîne", "cat": "Low cost",
+      "address": "81 rue Claude Lévi-Strauss, 76620",
+      "hours": "",
+      "fee": null, "commit": "Pass annuel",
+      "plans": [
+        {"n": "Pass annuel Privilège", "price": 19.90, "unit": "mois", "commit": "1 an", "inc": "Accès illimité", "uncertain": true}
+      ],
+      "perks": ["cours", "network"],
+      "rating": null, "reviews": null, "rating_src": "",
+      "url": "https://www.masalledesport.com/salle/9191,l-orange-bleue-le-havre-grand-hameau,fitness-low-cost-club-de-musculation,le-havre,76620,fr",
+      "sources": ["https://www.masalledesport.com/salle/9191,l-orange-bleue-le-havre-grand-hameau,fitness-low-cost-club-de-musculation,le-havre,76620,fr"],
+      "official": false,
+      "notes": "« À partir de 19,90 » sur un annuaire, unité non précisée : à vérifier."
+    },
+    {
+      "name": "L'Orange Bleue Le Havre Centre", "brand": "L'Orange Bleue", "kind": "Chaîne", "cat": "Fitness / musculation",
+      "address": "93 rue Louis Brindeau, 76600",
+      "hours": "",
+      "fee": null, "commit": "Engagement (−5 €/4 sem. avec 2 ans)",
+      "plans": [
+        {"n": "Boost / Prime", "price": 45, "unit": "4sem", "commit": "Engagement", "inc": "Machines, cours collectifs à volonté, conseils des coachs. 40 € en promotion début novembre 2026", "uncertain": true}
+      ],
+      "perks": ["cours", "coaching", "network"],
+      "rating": 4.0, "reviews": 101, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "url": "https://www.lorangebleue.fr/nos-salles/",
+      "sources": ["https://www.lorangebleue.fr/", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
+      "official": false,
+      "notes": "Tarif national affiché ; exo-sport.fr indique « à partir de ~25 €/mois » pour ce club. Environ 50 cours collectifs (YAKO) par semaine."
+    },
+    {
+      "name": "Keepcool Le Havre", "brand": "Keepcool", "kind": "Chaîne", "cat": "Fitness / musculation",
+      "address": "65 avenue René Coty, 76600",
+      "hours": "7j/7 6h–23h (accueil lun–sam 9h–19h)",
+      "fee": 39, "commit": "52 à 56 semaines",
+      "plans": [
+        {"n": "Access", "price": 29.99, "unit": "4sem", "commit": "52 semaines", "inc": "Accès club et réseau"},
+        {"n": "Prime (meilleure vente)", "price": 34.99, "unit": "4sem", "commit": "56 semaines", "inc": "4 premières semaines offertes, small groups illimités, invités 2 fois/semaine, pause jusqu'à 30 jours"},
+        {"n": "Platinium", "price": 159.20, "unit": "mois", "commit": "6 mois", "inc": "Coaching individuel chaque semaine"}
+      ],
+      "perks": ["d7", "cours", "video", "small", "guest", "network", "freeze", "sauna", "parking", "coaching"],
+      "rating": 4.7, "reviews": 249, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "url": "https://www.keepcool.fr/salle-de-sport/le-havre",
+      "sources": ["https://www.keepcool.fr/salle-de-sport/le-havre", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
+      "official": true,
+      "notes": "Frais d'adhésion 39 €, souvent offerts en promotion. +500 cours vidéo, corner boissons et barres (payant)."
+    },
+    {
+      "name": "On Air Le Havre La Nef", "brand": "On Air", "kind": "Chaîne", "cat": "Fitness / musculation",
+      "address": "Complexe NEF, 51 rue Pierre Sémard, 76600",
+      "hours": "6h–23h en semaine, 8h–20h le week-end",
+      "fee": 50, "commit": "Sans engagement annuel, préavis 8 semaines",
+      "plans": [
+        {"n": "Essential", "price": 31.96, "unit": "4sem", "commit": "Aucun (préavis 8 sem.)", "inc": "Accès au réseau"},
+        {"n": "Original", "price": 39.96, "unit": "4sem", "commit": "Aucun (préavis 8 sem.)", "inc": "+ fontaine à boissons, plateforme oscillante, scanner corporel 3D"},
+        {"n": "Ultra", "price": 43.96, "unit": "4sem", "commit": "Aucun (préavis 8 sem.)", "inc": "+ carte partageable avec une personne du foyer"}
+      ],
+      "perks": ["d7", "network", "nocommit", "drinks", "body", "guest", "women", "fight", "cross", "video"],
+      "rating": 4.7, "reviews": 171, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "url": "https://onair-fitness.fr/club/le-havre-la-nef/",
+      "sources": ["https://onair-fitness.fr/club/le-havre-la-nef/", "https://onair-fitness.fr/abonnements/", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
+      "official": true,
+      "notes": "Plus de 1 600 m², ring de boxe, espace femmes. Frais d'inscription 50 € + 10 €/an de garantie matériel."
+    },
+    {
+      "name": "Accrosport Le Havre", "brand": "Accrosport", "kind": "Chaîne régionale", "cat": "Fitness / musculation",
+      "address": "70 quai Frissard (Docks Vauban), 76600",
+      "hours": "7j/7 (8h30–22h la plupart des jours, 9h–19h le week-end)",
+      "fee": 0, "commit": "12 mois la première année, puis sans engagement",
+      "plans": [
+        {"n": "L'Accro", "price": 39, "unit": "4sem", "commit": "12 mois", "inc": "Plateaux, tous les cours coachés (Les Mills, cycling, fonctionnel, mind & body), sauna"},
+        {"n": "L'Aqua", "price": 59, "unit": "4sem", "commit": "12 mois", "inc": "+ aqua cycling, aqua training, aqua boxing"},
+        {"n": "Accro Test", "price": 5, "unit": "seance", "inc": "Séance découverte, une fois par personne"}
+      ],
+      "perks": ["d7", "cours", "sauna", "pool", "network", "parking", "trial", "guest"],
+      "rating": 4.0, "reviews": 699, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "url": "https://accrosport.com/clubs/le-havre/",
+      "sources": ["https://accrosport.com/clubs/le-havre/", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
+      "official": true,
+      "notes": "Plus de 4 000 m² avec piscine. Invité : 10 € accompagné d'un adhérent. Le plus d'avis Google de la ville."
+    },
+    {
+      "name": "Planète Fitness Le Havre", "brand": "Planète Fitness", "kind": "Chaîne", "cat": "Fitness / musculation",
+      "address": "74 rue des Chargeurs Réunis, 76620",
+      "hours": "7j/7 dès 5h",
+      "fee": null, "commit": "Sans engagement, gel possible",
+      "plans": [
+        {"n": "Accès illimité", "price": 7.5, "unit": "semaine", "commit": "Aucun", "inc": "Souvent 4 premières semaines offertes", "uncertain": true},
+        {"n": "Séance d'essai", "price": 10, "unit": "seance", "inc": "Remboursée en cas d'abonnement"}
+      ],
+      "perks": ["d7", "cours", "sauna", "cross", "nocommit", "freeze", "trial"],
+      "rating": 4.8, "reviews": 83, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "url": "https://www.masalledesport.com/salle/14093,planete-fitness-le-havre,club-de-fitness,le-havre,76620,fr",
+      "sources": ["https://www.masalledesport.com/salle/14093,planete-fitness-le-havre,club-de-fitness,le-havre,76620,fr", "https://www.toute-la-franchise.com/news-planete-fitness-inaugure-deux-nouvelles-succursales-au-havre-et-a-dijon", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
+      "official": false,
+      "notes": "Ouvert le 1er septembre 2025 : le plus récent des grands clubs. Zone Hyrox."
+    },
+    {
+      "name": "LH Sport Club", "brand": "", "kind": "Indépendant", "cat": "Fitness / musculation",
+      "address": "69 bis rue du Général Sarrail, 76600",
+      "hours": "7j/7 6h–23h",
+      "fee": null, "commit": "",
+      "plans": [
+        {"n": "Abonnement", "price": 30, "unit": "mois", "inc": "« À partir de 30 €/mois », formule étudiante dès 30 €", "uncertain": true}
+      ],
+      "perks": ["d7", "cross", "sauna", "student", "trial"],
+      "rating": 4.8, "reviews": 197, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "url": "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre",
+      "sources": ["https://exo-sport.fr/blog/meilleures-salles-sport-le-havre", "https://www.masalledesport.com/salle-de-sport,a,le-havre"],
+      "official": false,
+      "notes": "Zone cross-training (cage), espace détente, séance d'essai. Prépa Hyrox."
+    },
+    {
+      "name": "Gino Gym Le Havre", "brand": "", "kind": "Indépendant", "cat": "Fitness / musculation",
+      "address": "77 rue du Maréchal Joffre, 76600",
+      "hours": "7j/7 6h–23h",
+      "fee": 59.99, "commit": "1 an ou sans engagement",
+      "plans": [
+        {"n": "Liberté", "price": 34.99, "unit": "mois", "commit": "1 an"},
+        {"n": "Découverte", "price": 44.99, "unit": "mois", "commit": "Aucun"},
+        {"n": "Liberté Étudiant", "price": 19.99, "unit": "mois", "commit": "1 an", "reduced": true, "inc": "Frais réduits : 20 € + 20 €"},
+        {"n": "Découverte Étudiant", "price": 29.99, "unit": "mois", "commit": "Aucun", "reduced": true}
+      ],
+      "perks": ["d7", "coaching", "student", "nocommit"],
+      "rating": 4.9, "reviews": 129, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "url": "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre",
+      "sources": ["https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
+      "official": false,
+      "notes": "Frais : adhésion 39,99 € + dossier 20 €. Coachs présents en salle. Même adresse que « Viv'eden » sur un annuaire."
+    },
+    {
+      "name": "Dark Fitness Le Havre", "brand": "", "kind": "Indépendant", "cat": "Fitness / musculation",
+      "address": "111 boulevard de Leningrad, 76600",
+      "hours": "7j/7 6h–22h",
+      "fee": null, "commit": "Pass annuel (1 an)",
+      "plans": [],
+      "perks": ["d7", "cours"],
+      "rating": 4.0, "reviews": 6, "rating_src": "masalledesport.com",
+      "url": "https://www.masalledesport.com/salle/9851,dark-fitness-le-havre,club-de-fitness,le-havre,76600,fr",
+      "sources": ["https://www.masalledesport.com/salle/9851,dark-fitness-le-havre,club-de-fitness,le-havre,76600,fr"],
+      "official": false,
+      "notes": "Plus de 1 000 m². Aucun prix publié."
+    },
+    {
+      "name": "CrossFit L'Entrepôt", "brand": "", "kind": "Indépendant", "cat": "CrossFit / Hyrox",
+      "address": "36 rue Marcel Paul (Graville), 76600",
+      "hours": "Cours lun–ven 7h–19h30, sam 9h–10h30",
+      "fee": null, "commit": "",
+      "plans": [],
+      "perks": ["small", "coaching", "cross"],
+      "rating": 4.9, "reviews": 127, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "url": "https://wod-trip.com/box/crossfit-lentrepot-le-havre",
+      "sources": ["https://exo-sport.fr/blog/meilleures-salles-sport-le-havre", "https://wod-trip.com/box/crossfit-lentrepot-le-havre", "https://www.masalledesport.com/salle/9092,crossfit-l-entrepot,box-crossfit,le-havre,76600,fr"],
+      "official": false,
+      "notes": "Box affiliée CrossFit depuis 2015, 400 m². Tarifs sur devis."
+    },
+    {
+      "name": "Fair Fight CrossFit", "brand": "", "kind": "Indépendant", "cat": "CrossFit / Hyrox",
+      "address": "45 rue Gustave Nicolle, 76600",
+      "hours": "7j/7, plus de 60 h de cours par semaine",
+      "fee": 50, "commit": "12 mois ou sans engagement (+20 €/mois)",
+      "plans": [
+        {"n": "1 cours / semaine", "price": 50, "unit": "mois", "commit": "12 mois", "inc": "70 € sans engagement"},
+        {"n": "2 cours / semaine", "price": 60, "unit": "mois", "commit": "12 mois", "inc": "80 € sans engagement"},
+        {"n": "3 cours / semaine", "price": 70, "unit": "mois", "commit": "12 mois", "inc": "90 € sans engagement"},
+        {"n": "CrossFit Passion illimité", "price": 80, "unit": "mois", "commit": "12 mois", "inc": "Accès libre inclus, 6 coachs diplômés d'État. 100 € sans engagement"},
+        {"n": "Passion à deux", "price": 70, "unit": "mois", "commit": "12 mois", "inc": "Par personne"},
+        {"n": "Carnet 10 séances", "price": 150, "unit": "carnet", "count": 10},
+        {"n": "Drop-in", "price": 20, "unit": "seance"}
+      ],
+      "perks": ["d7", "small", "coaching", "cross", "guest", "nocommit", "student", "senior", "kids", "trial"],
+      "rating": 4.9, "reviews": 108, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "url": "https://fairfightcrossfit.fr/tarifs/",
+      "sources": ["https://fairfightcrossfit.fr/tarifs/", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
+      "official": true,
+      "notes": "−10 €/mois pour étudiants, seniors (60+) et métiers d'intervention. 10 €/mois tant que vous payez encore une autre salle. Grille tarifaire datée de 2024."
+    },
+    {
+      "name": "CrossFit Océan", "brand": "", "kind": "Indépendant", "cat": "CrossFit / Hyrox",
+      "address": "22 quai de Southampton, 76600",
+      "hours": "",
+      "fee": null, "commit": "",
+      "plans": [
+        {"n": "Abonnement", "price": 70, "unit": "mois", "inc": "« À partir de »", "uncertain": true}
+      ],
+      "perks": ["cross", "coaching", "small"],
+      "rating": 4.6, "reviews": null, "rating_src": "HyroXtrem",
+      "url": "https://hyroxtrem.com/hyrox-entrainement/le-havre-76600/",
+      "sources": ["https://hyroxtrem.com/hyrox-entrainement/le-havre-76600/"],
+      "official": false,
+      "notes": "Prépa Hyrox, open gym, coaching."
+    },
+    {
+      "name": "I-Motion Club", "brand": "", "kind": "Indépendant", "cat": "Électrostimulation (EMS)",
+      "address": "43 rue Louis Brindeau, 76600",
+      "hours": "",
+      "fee": null, "commit": "6 à 12 mois pour les abonnements",
+      "plans": [
+        {"n": "Abonnement duo (48 séances / 12 mois)", "price": 124, "unit": "mois", "commit": "12 mois"},
+        {"n": "Séance EMS (carnet quatuor)", "price": 26, "unit": "seance", "inc": "De 26 € (carnet de 10, à quatre) à 49 € (solo, séance unique)"},
+        {"n": "Découverte 3 séances", "price": 99, "unit": "carnet", "count": 3},
+        {"n": "Coaching 45 min sans EMS", "price": 45, "unit": "seance", "inc": "35 €/personne en duo"}
+      ],
+      "perks": ["coaching", "small", "guest"],
+      "rating": 5.0, "reviews": 423, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "url": "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre",
+      "sources": ["https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
+      "official": false,
+      "notes": "La meilleure note avec le plus d'avis parmi les petites structures."
+    },
+    {
+      "name": "Iron BodyFit Le Havre", "brand": "Iron BodyFit", "kind": "Chaîne", "cat": "Électrostimulation (EMS)",
+      "address": "123 boulevard de Strasbourg, 76600",
+      "hours": "",
+      "fee": null, "commit": "",
+      "plans": [],
+      "perks": ["coaching", "trial"],
+      "rating": null, "reviews": null, "rating_src": "",
+      "url": "https://www.masalledesport.com/salle/14233,iron-bodyfit-le-havre,centre-d-electrostimulation-ems,le-havre,76600,fr",
+      "sources": ["https://www.masalledesport.com/salle/14233,iron-bodyfit-le-havre,centre-d-electrostimulation-ems,le-havre,76600,fr"],
+      "official": false,
+      "notes": "Séances de 25 minutes en solo ou duo avec coach, séance d'essai gratuite. Prix non publiés."
+    },
+    {
+      "name": "BodyHit Le Havre Centre", "brand": "BodyHit", "kind": "Chaîne", "cat": "Électrostimulation (EMS)",
+      "address": "143 rue de Paris, 76600",
+      "hours": "",
+      "fee": null, "commit": "",
+      "plans": [],
+      "perks": ["coaching"],
+      "rating": null, "reviews": null, "rating_src": "",
+      "url": "https://www.masalledesport.com/salle-de-sport,a,le-havre",
+      "sources": ["https://www.masalledesport.com/salle-de-sport,a,le-havre"],
+      "official": false,
+      "notes": "Prix non publiés."
+    },
+    {
+      "name": "Mauve Yoga", "brand": "", "kind": "Indépendant", "cat": "Yoga / Pilates",
+      "address": "13 rue Rollon, 76600",
+      "hours": "",
+      "fee": null, "commit": "Zéro engagement",
+      "plans": [
+        {"n": "Séance tarif réduit", "price": 19, "unit": "seance", "inc": "Créneaux du matin, du midi, calmes"},
+        {"n": "Séance plein tarif", "price": 25, "unit": "seance", "inc": "Créneaux principaux et du soir"},
+        {"n": "Abonnement mensuel", "price": 36.90, "unit": "mois", "inc": "Selon un comparatif tiers, adhésion 19 €", "uncertain": true}
+      ],
+      "perks": ["small", "coaching", "guest", "nocommit"],
+      "rating": 5.0, "reviews": 71, "rating_src": "Kreno Sport",
+      "url": "https://www.krenosport.com/club/mauve-yoga-le-havre-9028",
+      "sources": ["https://www.krenosport.com/club/mauve-yoga-le-havre-9028"],
+      "official": false,
+      "notes": "Yoga et Pilates en petits groupes, cours particuliers ou en duo."
+    },
+    {
+      "name": "À Corps et Âmes", "brand": "", "kind": "Indépendant", "cat": "Yoga / Pilates",
+      "address": "42-44 rue des Galions, 76600",
+      "hours": "",
+      "fee": 15, "commit": "",
+      "plans": [
+        {"n": "Abonnement annuel Pilates", "price": 480, "unit": "an", "inc": "Ou 3 × 160 €"},
+        {"n": "Cours de Pilates", "price": 15, "unit": "seance"},
+        {"n": "Cours de yoga", "price": 18, "unit": "seance"},
+        {"n": "Forfait yoga 10 cours", "price": 140, "unit": "carnet", "count": 10, "inc": "Valable 4 mois"}
+      ],
+      "perks": ["cours"],
+      "rating": null, "reviews": null, "rating_src": "",
+      "url": "https://www.acorpsetameslehavre.com/yoga-3/",
+      "sources": ["https://www.acorpsetameslehavre.com/yoga-3/"],
+      "official": true,
+      "notes": "Yoga, Pilates, sophrologie, immersion sonore. Adhésion annuelle 15 €."
+    },
+    {
+      "name": "The New Me (Pilates Reformer)", "brand": "The New Me", "kind": "Chaîne", "cat": "Yoga / Pilates",
+      "address": "100 rue de Paris, 76600",
+      "hours": "Ouvert 7j/7",
+      "fee": null, "commit": "",
+      "plans": [
+        {"n": "1 cours", "price": 30, "unit": "seance"},
+        {"n": "Découverte 3 cours", "price": 60, "unit": "carnet", "count": 3},
+        {"n": "10 cours (6 mois)", "price": 260, "unit": "carnet", "count": 10},
+        {"n": "50 cours (12 mois)", "price": 1100, "unit": "carnet", "count": 50}
+      ],
+      "perks": ["d7", "small"],
+      "rating": null, "reviews": null, "rating_src": "",
+      "url": "https://thenewmeparis.com/pages/studio-reformer-le-havre",
+      "sources": ["https://thenewmeparis.com/pages/studio-reformer-le-havre"],
+      "official": true,
+      "notes": "Pilates sur machines Reformer, cours collectifs tous niveaux. Abonnements mensuels vendus dans l'appli (prix non publiés)."
+    },
+    {
+      "name": "L'Autre Rive (centre de yoga)", "brand": "", "kind": "Association", "cat": "Yoga / Pilates",
+      "address": "5 place Léon Meyer, 76600",
+      "hours": "Saison de septembre à juillet, fermé pendant les vacances scolaires",
+      "fee": 12, "commit": "Forfait annuel",
+      "plans": [
+        {"n": "Yoga 1h/semaine (saison)", "price": 320, "unit": "an"},
+        {"n": "Pilates 1h/semaine (saison)", "price": 350, "unit": "an"},
+        {"n": "Carte 10 séances yoga", "price": 155, "unit": "carnet", "count": 10}
+      ],
+      "perks": ["cours"],
+      "rating": null, "reviews": null, "rating_src": "",
+      "url": "https://yoga-autrerive.fr/planning.html",
+      "sources": ["https://yoga-autrerive.fr/planning.html", "https://yoga-autrerive.fr/contact.html"],
+      "official": true,
+      "notes": "Yoga, Pilates, Qi Gong, Feldenkrais, méditation, gym douce. Adhésion 12 €."
+    }
+  ],
+  "others": [
+    {"name": "Viv'eden Le Havre", "cat": "Fitness", "address": "77 rue du Maréchal Joffre, 76600", "src": "https://www.masalledesport.com/salle-de-sport,a,le-havre"},
+    {"name": "Leader Club Le Havre", "cat": "Fitness", "address": "139 rue du Maréchal Joffre, 76600", "src": "https://www.masalledesport.com/salle-de-sport%2Ca%2Cle-havre?page=2"},
+    {"name": "Physic Form Le Havre", "cat": "Fitness", "address": "68 bis rue du Général Sarrail, 76600", "src": "https://www.masalledesport.com/salle-de-sport,a,le-havre"},
+    {"name": "Art'Sport Café", "cat": "Fitness (30 h de cours)", "address": "8 rue Marcel Toulouzan, 76600", "src": "https://www.masalledesport.com/salle-de-sport,a,le-havre"},
+    {"name": "Pep's Asso", "cat": "Fitness associatif", "address": "Boulevard Albert Ier, 76600", "src": "https://www.masalledesport.com/salle-de-sport,a,le-havre"},
+    {"name": "Corps Accord", "cat": "Hyrox / fitness", "address": "Le Havre", "src": "https://maboxdecross.fr/recherche/seine-maritime/le-havre"},
+    {"name": "O'Fight Club", "cat": "Hyrox / combat", "address": "Le Havre", "src": "https://maboxdecross.fr/recherche/seine-maritime/le-havre"},
+    {"name": "Les Bains des Docks", "cat": "Piscine avec activités fitness", "address": "Quai de la Réunion, 76600", "src": "https://www.masalledesport.com/salle-de-sport,a,le-havre"}
+  ],
+  "watch": [
+    {"name": "Gigafit Le Havre", "text": "Ouverture annoncée (« Gigafit débarque ! »), avec Pilates Reformer. Adresse et prix pas encore publiés.", "src": "https://www.gigafit.fr/club/le-havre"},
+    {"name": "Fitness Park Gonfreville-l'Orcher", "text": "Hors de la ville mais à quelques minutes : 30 €/4 semaines avec engagement (19 € le premier mois), jusqu'à 60 € sans engagement.", "src": "https://www.fitnesspark.fr/club/le-havre/"},
+    {"name": "Basic-Fit et L'Orange Bleue Gonfreville-l'Orcher", "text": "Deux autres clubs low cost juste à l'est de la ville.", "src": "https://www.masalledesport.com/salle-de-sport%2Ca%2Cle-havre?page=2"}
+  ],
+  "market_sources": [
+    {"label": "Prix moyen d'un abonnement fitness au Havre : 26 €/mois (fourchette 20–30 €), novembre 2026", "src": "https://www.combien-coute.net/fitness/normandie/havre/"}
+  ]
+}
