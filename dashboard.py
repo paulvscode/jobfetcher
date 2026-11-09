@@ -344,7 +344,7 @@ code{background:var(--soft);padding:1px 5px;border-radius:4px}
 <section id="v-gym" hidden>
  <div class="card"><div class="dh"><div><h2 style="margin:0 0 4px;font-size:18px">Salles de sport — ville du Havre</h2>
   <p class="muted" style="margin:0" id="gIntro"></p></div>
-  <div class="seg" id="gView" role="group" aria-label="Vue"><button data-v="comp" aria-pressed="true">Concurrents</button><button data-v="market" aria-pressed="false">Marché</button></div></div>
+  <div class="seg" id="gView" role="group" aria-label="Vue"><button data-v="comp" aria-pressed="true">Concurrents</button><button data-v="rank" aria-pressed="false">Classement</button><button data-v="market" aria-pressed="false">Marché</button></div></div>
   <div class="kp" id="gKpi"></div>
   <b>Pistes pour développer une salle existante</b><ul id="gIdeas" style="margin:6px 0 0;padding-left:20px"></ul></div>
 
@@ -365,6 +365,24 @@ code{background:var(--soft);padding:1px 5px;border-radius:4px}
    <div class="card"><b>Autres lieux recensés</b> <span class="muted">(pas d'offre détaillée trouvée)</span><ul id="gOthers" style="padding-left:20px"></ul></div>
   </div>
   <p class="note" id="gAbout"></p>
+ </div>
+
+ <div id="g-rank" hidden>
+  <div class="card" style="margin-top:14px"><div class="dh"><div><b>Score sur 100</b> <span class="muted">— réglez l'importance de chaque critère</span></div>
+   <div class="row" style="margin:0"><select id="rMode"><option value="all">Classement général</option><option value="cat">Classement par type</option></select>
+   <select id="rCat"></select><button class="pin" id="rReset">Poids par défaut</button></div></div>
+   <div class="kp" id="rWeights"></div></div>
+  <div class="tw" style="margin-top:12px"><table><thead><tr><th class="n">#</th><th>Salle</th><th style="min-width:150px">Score</th><th class="n">Avis</th><th class="n">Prix</th><th class="n">Services</th><th class="n">Flexibilité</th><th class="n">Données</th></tr></thead>
+   <tbody id="rtb"></tbody></table></div>
+  <div class="card" style="margin-top:14px"><b>Ce qui fait chaque score</b> <span class="muted">(points apportés par chaque critère)</span><div class="cw" id="rChartWrap"><canvas id="rChart"></canvas></div></div>
+  <div class="card" style="margin-top:14px"><b>Comment le score est calculé</b>
+   <ul style="margin:6px 0 0;padding-left:20px" class="note">
+    <li><b>Avis</b> : note Google corrigée par le nombre d'avis (une salle à 5/5 avec 3 avis ne passe pas devant une salle à 4,9 avec 400 avis). Moyenne bayésienne avec 50 avis « fictifs » à la note moyenne de la ville, puis 3,5/5 = 0 point et 5/5 = 100 points. Nombre d'avis inconnu : compté comme 10.</li>
+    <li><b>Prix</b> : comparé aux salles du même type (low cost, fitness, CrossFit, EMS, yoga/Pilates), car un cours coaché ne se compare pas à un plateau en libre accès. Prix médian du type = 50 points, moitié moins cher = 100, 50 % plus cher = 0. Tarifs réduits exclus.</li>
+    <li><b>Services</b> : nombre d'atouts recensés, rapporté à la salle qui en a le plus (= 100). Attention : les chaînes publient plus d'informations, les indépendants peuvent être sous-évalués.</li>
+    <li><b>Flexibilité</b> : formule sans engagement (40), offre d'essai (20), pause d'abonnement (20), frais d'entrée offerts (20) ou ≤ 20 € (10).</li>
+    <li>Un critère inconnu (pas de prix ou pas de note publiés) compte pour 50/100, une valeur neutre. « Données » = part des informations clés connues (note, nombre d'avis, prix, frais, engagement, horaires) : en dessous de 50 %, le score est fragile.</li>
+   </ul><p class="note" id="rUnscored"></p></div>
  </div>
 
  <div id="g-market" hidden>
@@ -1009,7 +1027,10 @@ function renderGym(){
 function showGymView(){
   document.getElementById("g-comp").hidden = gView!=="comp";
   document.getElementById("g-market").hidden = gView!=="market";
-  if (gView==="comp") { renderGymTable(); drawGymPrices(); renderGymPerks(); } else renderGymMarket();
+  document.getElementById("g-rank").hidden = gView!=="rank";
+  if (gView==="comp") { renderGymTable(); drawGymPrices(); renderGymPerks(); }
+  else if (gView==="rank") renderRank();
+  else renderGymMarket();
 }
 function renderGymTable(){
   const norm = t => String(t||"").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -1059,6 +1080,74 @@ function drawGymFlow(){
       {label:"Créations", data:n.f.map(v=>v[0]), _pal:3, backgroundColor:PAL[3], borderColor:PAL[3], borderRadius:3},
       {label:"Fermetures", data:n.f.map(v=>v[1]), _pal:4, backgroundColor:PAL[4], borderColor:PAL[4], borderRadius:3}]}, options:barOpts(false, v=>v)});
 }
+// ---- gym ranking: a score out of 100 from reviews, price, services and flexibility ----------
+const PARTS = [["rev","Avis",35],["price","Prix",25],["serv","Services",25],["flex","Flexibilité",15]];
+const W_DEFAULT = Object.fromEntries(PARTS.map(([k,,w])=>[k,w]));
+let W = {...W_DEFAULT}, rReady = false;
+try { const s = JSON.parse(localStorage.getItem("gymWeights")||"null"); if (s && PARTS.every(([k])=>typeof s[k]==="number")) W = s; } catch(e) {}
+const clamp = v => Math.max(0, Math.min(100, v));
+function gymScores(){
+  const rated = GYMS.filter(g=>g.rating!=null), C = rated.reduce((s,g)=>s+g.rating,0)/(rated.length||1), M = 50;
+  const groups = {};
+  const pkey = g => g.cat + (g.month!=null ? "|m" : "|s"), pval = g => g.month ?? g.session;
+  GYMS.forEach(g=>{ if (pval(g)!=null) (groups[pkey(g)] = groups[pkey(g)] || []).push(pval(g)); });
+  const maxPerks = Math.max(1, ...GYMS.map(g=>g.np));
+  return GYMS.map(g=>{
+    const p = {};
+    if (g.rating!=null){ const v = g.reviews ?? 10; p.rev = clamp(((v*g.rating + M*C)/(v+M) - 3.5)/1.5*100); }
+    if (pval(g)!=null){ const arr = groups[pkey(g)], med = median(arr);
+      p.price = arr.length<2 ? 50 : clamp(50 + 100*(med - pval(g))/med); }
+    p.serv = 100*g.np/maxPerks;
+    const has = k => (g.perks||[]).includes(k);
+    p.flex = (has("nocommit")?40:0) + (has("trial")?20:0) + (has("freeze")?20:0) + (g.fee===0 ? 20 : g.fee!=null && g.fee<=20 ? 10 : 0);
+    const wsum = PARTS.reduce((s,[k])=>s+W[k],0);      // unknown rating or price = neutral 50
+    const contrib = Object.fromEntries(PARTS.map(([k])=>[k, wsum ? W[k]*(p[k] ?? 50)/wsum : 0]));
+    const score = wsum ? Object.values(contrib).reduce((a,b)=>a+b,0) : null;
+    const facts = [g.rating!=null, g.reviews!=null, pval(g)!=null, g.fee!=null, !!g.commit, !!g.hours];
+    return {g, p, score, contrib, data: Math.round(100*facts.filter(Boolean).length/facts.length)};
+  });
+}
+function renderRank(){
+  if (!rReady){
+    rReady = true;
+    document.getElementById("rCat").innerHTML = `<option value="">Tous les types</option>${CATS.map(c=>`<option>${esc(c)}</option>`).join("")}`;
+    document.getElementById("rWeights").innerHTML = PARTS.map(([k,l])=>`<div><label for="w-${k}"><b id="wv-${k}"></b><span>${l}</span></label>
+      <input type="range" id="w-${k}" min="0" max="100" step="5" style="width:100%;padding:0" aria-label="Poids ${l}"></div>`).join("");
+    PARTS.forEach(([k])=>document.getElementById("w-"+k).addEventListener("input", e=>{ W[k] = +e.target.value; saveW(); renderRank(); }));
+    document.getElementById("rReset").onclick = ()=>{ W = {...W_DEFAULT}; saveW(); renderRank(); };
+    ["rMode","rCat"].forEach(id=>document.getElementById(id).addEventListener("input", renderRank));
+    const others = (GJ.others||[]).map(o=>o.name);
+    document.getElementById("rUnscored").textContent = others.length ? `Non notés faute d'informations publiées : ${others.join(", ")}.` : "";
+  }
+  const tot = PARTS.reduce((s,[k])=>s+W[k],0) || 1;
+  PARTS.forEach(([k])=>{ document.getElementById("w-"+k).value = W[k]; document.getElementById("wv-"+k).textContent = Math.round(100*W[k]/tot)+" %"; });
+  const mode = document.getElementById("rMode").value, cat = document.getElementById("rCat").value;
+  let rows = gymScores().filter(r=>r.score!=null && (!cat || r.g.cat===cat)).sort((a,b)=>b.score-a.score);
+  if (mode==="cat") rows.sort((a,b)=>CATS.indexOf(a.g.cat)-CATS.indexOf(b.g.cat) || b.score-a.score);
+  const cell = (v, sub) => `<td class="n">${v==null ? "—" : Math.round(v)}${sub ? `<div class="muted" style="font-size:11px">${sub}</div>` : ""}</td>`;
+  let last = null, rank = 0;
+  document.getElementById("rtb").innerHTML = rows.map(r=>{
+    const g = r.g; let head = "";
+    if (mode==="cat" && g.cat!==last){ last = g.cat; rank = 0; head = `<tr><th colspan="8" style="background:var(--soft);cursor:default">${esc(g.cat)}</th></tr>`; }
+    rank++;
+    const price = g.month!=null ? `${g.unc?"≈ ":""}${Math.round(g.month)} €/mois` : g.session!=null ? `${eur(g.session)}/séance` : "";
+    return head + `<tr style="cursor:default"><td class="n">${rank}</td>
+      <td class="l"><b>${esc(g.name)}</b><div class="muted" style="font-size:12px">${esc(g.cat)} · ${esc(g.kind)}</div></td>
+      <td><div style="display:flex;align-items:center;gap:8px"><b style="font-size:17px;min-width:28px;font-variant-numeric:tabular-nums">${Math.round(r.score)}</b>
+        <div style="flex:1;height:8px;background:var(--soft);border-radius:4px;min-width:70px"><div style="width:${r.score}%;height:100%;background:var(--accent);border-radius:4px"></div></div></div></td>
+      ${cell(r.p.rev, g.rating!=null ? `${g.rating.toFixed(1).replace(".",",")}★ · ${g.reviews!=null ? fmt(g.reviews)+" avis" : "nb inconnu"}` : "pas de note")}
+      ${cell(r.p.price, price || "non publié")}${cell(r.p.serv, `${g.np} atouts`)}${cell(r.p.flex, "")}
+      <td class="n ${r.data<50?"down":""}">${r.data} %</td></tr>`;
+  }).join("");
+  const sorted = [...rows].sort((a,b)=>b.score-a.score);
+  document.getElementById("rChartWrap").style.height = (sorted.length*26+70)+"px";
+  gChart("rChart", {type:"bar", data:{labels:sorted.map(r=>r.g.name.replace(/ \(.*\)/,"")),
+      datasets:PARTS.map(([k,l],i)=>({label:l, _pal:i, backgroundColor:PAL[i], borderColor:PAL[i], data:sorted.map(r=>Math.round(r.contrib[k]*10)/10)}))},
+    options:{...barOpts(true, v=>(v+"").replace(".",",")+" pts"),
+      scales:{x:{stacked:true, max:100, ticks:{color:C("--muted")}, grid:{color:C("--line")}, beginAtZero:true}, y:{stacked:true, ticks:{color:C("--muted"), autoSkip:false}, grid:{display:false}}}}});
+}
+function saveW(){ try { localStorage.setItem("gymWeights", JSON.stringify(W)); } catch(e) {} }
+
 function renderGymMarket(){
   const A = G.cities||[];
   const rows = [...(G.naf||[]).map(n=>({...n, src:"Sirene"})), ...(G.bpe||[]).map(b=>({...b, src:"BPE "+(G.bpe_year||"")}))].map(r=>({...r, ...cityDens(r)}));
