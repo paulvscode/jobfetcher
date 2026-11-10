@@ -122,9 +122,10 @@ function crawlSection(K, cr, a){
 
   <h3 data-nav="Recommandations">Recommandations actives</h3>
   <p class="muted" style="margin:0 0 8px">Tirées de la lecture des ${ok.length} pages. SEO, GEO et AEO : quoi faire sur le site, avec le texte ou le code prêt à coller. « Avis et tendances » et « Marketing » : ce qui se passe hors du site. En dessous, les correctifs page par page sont recalculés à chaque collecte : une ligne passe au vert quand c'est corrigé.</p>
-  <div class="seg" id="rPane" role="group" aria-label="Volet des recommandations" style="margin-bottom:10px;flex-wrap:wrap">${["SEO","GEO","AEO"].map(p=>`<button data-p="${p}" aria-pressed="${p===rPane}">${p} · ${recos.filter(r=>r.cat===p).length}</button>`).join("")}${K.market ? `<button data-p="AVIS" aria-pressed="${rPane==="AVIS"}">Avis et tendances</button>` : ""}${K.playbook ? `<button data-p="MKT" aria-pressed="${rPane==="MKT"}">Marketing : ce que font les meilleurs</button>` : ""}</div>
+  <div class="seg" id="rPane" role="group" aria-label="Volet des recommandations" style="margin-bottom:10px;flex-wrap:wrap">${["SEO","GEO","AEO"].map(p=>`<button data-p="${p}" aria-pressed="${p===rPane}">${p} · ${recos.filter(r=>r.cat===p).length}</button>`).join("")}${K.market ? `<button data-p="AVIS" aria-pressed="${rPane==="AVIS"}">Avis et tendances</button>` : ""}${K.playbook ? `<button data-p="MKT" aria-pressed="${rPane==="MKT"}">Marketing : ce que font les meilleurs</button>` : ""}${K.bing ? `<button data-p="BING" aria-pressed="${rPane==="BING"}">Bing Webmaster Tools</button>` : ""}</div>
   ${K.market ? `<div class="rpane" data-p="AVIS" data-nav="Avis et tendances" ${rPane==="AVIS" ? "" : "hidden"}>${marketSection(K)}</div>` : ""}
   ${K.playbook ? `<div class="rpane" data-p="MKT" data-nav="Marketing" ${rPane==="MKT" ? "" : "hidden"}>${playbookSection(K)}</div>` : ""}
+  ${K.bing ? `<div class="rpane" data-p="BING" data-nav="Bing Webmaster" ${rPane==="BING" ? "" : "hidden"}>${bingSection(K)}</div>` : ""}
   ${["SEO","GEO","AEO"].map(p=>`<div class="rpane" data-p="${p}" ${p===rPane ? "" : "hidden"}>
     ${recos.filter(r=>r.cat===p).sort((x,y)=>x.p-y.p).map(card).join("")}
     <div class="card"><b>Correctifs page par page — ${p}</b> <span class="muted">(${nFix(p)} point${nFix(p)>1?"s":""} à traiter, mis à jour à chaque collecte)</span>${fixRows(p)}</div></div>`).join("")}`;
@@ -206,4 +207,25 @@ function playbookSection(K){
      <div style="font-size:13px;margin-top:4px"><b>Pour LH Sport Club :</b> ${esc(l.lh)}</div>
      <div class="muted" style="font-size:12px;margin-top:4px">Sources : ${l.src.map(u=>link(u, host(u))).join(" · ")}</div></div>`).join("")}
    <p class="note">${esc(B.note)}</p></div>`;
+}
+
+// ---- Bing Webmaster Tools: why, step-by-step to-do, planned dashboard (club.json "bing") ------
+function bingSection(K){
+  const G = K.bing; if (!G) return "";
+  const done = G.todo.filter(t=>t.done).length;
+  return `
+  <h3 style="margin-top:4px">Bing Webmaster Tools : pour être trouvé par ChatGPT et Copilot</h3>
+  <p class="muted" style="margin:0 0 8px">Mis à jour le ${esc(fdate(G.checked))}. ${esc(G.intro)}</p>
+  <div class="card"><b>Ce que ça apporte</b>
+   ${G.why.map(([t,d])=>`<div class="chk"><div><b style="font-size:13px">${esc(t)}</b><div style="font-size:13px">${esc(d)}</div></div></div>`).join("")}</div>
+  <div class="card" style="margin-top:10px"><b>À faire, dans l'ordre</b> <span class="muted">— ${done} sur ${G.todo.length} fait${done>1?"s":""}</span>
+   ${G.todo.map((t,i)=>`<div class="chk"><span class="tag" style="background:var(${t.done?"--lv1":"--soft"})">${t.done?"Fait":"Étape "+(i+1)}</span><div style="flex:1"><b style="font-size:13px">${esc(t.t)}</b>
+     <div class="muted" style="font-size:12px">Qui : ${esc(t.who)} · Temps : ${esc(t.time)}</div>
+     <ol class="pl" style="font-size:13px">${t.how.map(x=>`<li>${esc(x)}</li>`).join("")}</ol></div></div>`).join("")}</div>
+  <div class="card" style="margin-top:10px"><b>Ce que le tableau affichera</b> <span class="muted">— une fois la clé API enregistrée, relevé chaque lundi</span>
+   <div class="tw" style="margin-top:8px"><table class="plain"><thead><tr><th>Donnée</th><th>Appel de l'API</th><th>À quoi ça sert</th></tr></thead><tbody>
+   ${G.dash.map(([t,m,d])=>`<tr><td><b>${esc(t)}</b></td><td><code>${esc(m)}</code></td><td style="white-space:normal">${esc(d)}</td></tr>`).join("")}</tbody></table></div>
+   <p class="note">${esc(G.dash_note)}</p></div>
+  <div class="card" style="margin-top:10px"><b>Liens utiles</b>
+   <ul class="pl" style="font-size:13px">${G.links.map(([t,u])=>`<li>${link(u, t)}</li>`).join("")}</ul></div>`;
 }
