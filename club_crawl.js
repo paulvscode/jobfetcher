@@ -129,9 +129,11 @@ function crawlSection(K, cr, a){
   ${K.bing ? `<div class="rpane" data-p="BING" data-nav="Bing Webmaster" ${rPane==="BING" ? "" : "hidden"}>${bingSection(K)}</div>` : ""}
   ${["SEO","GEO","AEO"].map(p=>`<div class="rpane" data-p="${p}" ${p===rPane ? "" : "hidden"}>
     ${recos.filter(r=>r.cat===p).sort((x,y)=>x.p-y.p).map(card).join("")}
-    <div class="card"><b>Correctifs page par page — ${p}</b> <span class="muted">(${nFix(p)} point${nFix(p)>1?"s":""} à traiter, mis à jour à chaque collecte)</span>${fixRows(p)}</div></div>`).join("")}`;
+    <div class="card"><b>Correctifs page par page — ${p}</b> <span class="muted">(${nFix(p)} point${nFix(p)>1?"s":""} à traiter, mis à jour à chaque collecte)</span>${fixRows(p)}</div></div>`).join("")}
+  ${surveySection()}`;
 }
 function bindCrawl(){
+  bindSurvey();
   const seg = document.getElementById("rPane");
   if (seg) seg.onclick = e=>{ const b = e.target.closest("button"); if (!b) return; rPane = b.dataset.p;
     seg.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x===b));
@@ -244,4 +246,158 @@ function pitfallsCard(K){
    <div style="margin-top:8px;font-size:13px"><b>Deux réglages qui changent peu</b>
     <ul class="pl">${F.minor.map(([t,d])=>`<li><b>${esc(t)}</b> : ${esc(d)}</li>`).join("")}</ul></div>
    <p class="note">Vérifications faites le ${esc(fdate(F.checked))}.</p></details>`;
+}
+
+// ---- questionnaire: who is answering + up to 5 questions; answers stay in this browser (localStorage) ----
+const SV_KEY = "lhsc_questionnaire_v1";
+const SV_SRC = ["Google ou Google Maps", "Instagram ou Facebook", "Un ami, un proche, un collègue", "ChatGPT ou une autre IA", "En passant devant", "Mon entreprise ou un comité d'entreprise", "Une compétition HYROX"];
+const SV = {
+  who: [["adh","Adhérent actuel"],["ex","Ancien adhérent"],["pros","Pas encore adhérent"]],
+  q: {
+    adh: [
+      {id:"src", t:"Comment avez-vous connu le club ?", type:"one", o:SV_SRC, other:true},
+      {id:"why", t:"Pourquoi l'avez-vous choisi plutôt qu'une autre salle ?", type:"many", hint:"Plusieurs réponses possibles", o:["Le prix","Les cours collectifs","HYROX","Les arts martiaux et la boxe","Les coachs","L'ambiance","Près de chez moi ou du travail","Les horaires (6h–23h)"], other:true},
+      {id:"nps", t:"De 0 à 10, recommanderiez-vous le club à un ami ?", type:"nps"},
+      {id:"risk", t:"Qu'est-ce qui pourrait vous faire partir ?", type:"many", hint:"Plusieurs réponses possibles", o:["Le prix","Trop de monde aux heures de pointe","Les horaires ou le planning des cours","Le matériel","Pas assez de suivi ou de résultats","Un déménagement","Rien, je compte rester"], other:true},
+      {id:"better", t:"Une chose à améliorer en priorité ?", type:"text"}
+    ],
+    ex: [
+      {id:"len", t:"Combien de temps êtes-vous resté adhérent ?", type:"one", o:["Moins de 3 mois","3 à 12 mois","1 à 2 ans","Plus de 2 ans"]},
+      {id:"left", t:"Quelle est la raison principale de votre départ ?", type:"one", o:["Le prix","Manque de temps","Déménagement","Santé ou blessure","Partir dans une autre salle","L'accueil ou l'ambiance","Les horaires ou les cours","Pas assez de suivi ou de résultats"], other:true},
+      {id:"now", t:"Où faites-vous du sport aujourd'hui ?", type:"one", o:["Dans une autre salle","Chez moi ou dehors","Dans un club ou une association","Je ne fais plus de sport"], other:true, otherLabel:"Quelle salle ou quel club ?"},
+      {id:"back", t:"Qu'est-ce qui vous ferait revenir ?", type:"many", hint:"Plusieurs réponses possibles", o:["Une semaine offerte pour réessayer","Une formule sans engagement moins chère","Pouvoir mettre l'abonnement en pause","D'autres horaires ou d'autres cours","Une offre à deux (ami, conjoint)","Rien"], other:true},
+      {id:"note", t:"Un commentaire pour le club ?", type:"text"}
+    ],
+    pros: [
+      {id:"src", t:"Comment avez-vous entendu parler du club ?", type:"one", o:[...SV_SRC, "Je ne le connaissais pas"], other:true},
+      {id:"now", t:"Faites-vous du sport aujourd'hui ?", type:"one", o:["Oui, dans une autre salle","Oui, chez moi ou dehors","Oui, dans un club ou une association","Non, pas en ce moment"], other:true, otherLabel:"Quelle salle ou quel club ?"},
+      {id:"want", t:"Qu'est-ce qui vous intéresse le plus ?", type:"many", hint:"Plusieurs réponses possibles", o:["Musculation","Cours collectifs (Body Pump, RPM…)","HYROX","Boxe et arts martiaux","Remise en forme ou perte de poids","Être suivi par un coach"], other:true},
+      {id:"stop", t:"Qu'est-ce qui vous freine ?", type:"many", hint:"Plusieurs réponses possibles", o:["Le prix","L'engagement de 12 mois","Peur de ne pas avoir le niveau","Le manque de temps","La distance ou le stationnement","Je ne connais pas bien l'offre"], other:true},
+      {id:"trial", t:"Une séance d'essai gratuite vous intéresse ?", type:"contact", o:["Oui","Peut-être plus tard","Non"]}
+    ]
+  }
+};
+const svLoad = ()=>{ try { const v = JSON.parse(localStorage.getItem(SV_KEY)||"[]"); return Array.isArray(v) ? v : []; } catch(e){ return []; } };
+const svSave = l=>{ try { localStorage.setItem(SV_KEY, JSON.stringify(l)); return true; } catch(e){ return false; } };
+let svView = "adh";
+
+function svQuestion(q, n){
+  const opt = (type, v)=>`<label class="svopt"><input type="${type}" name="${q.id}" value="${esc(v)}"><span>${esc(v)}</span></label>`;
+  let body = "";
+  if (q.type==="one" || q.type==="contact") body = q.o.map(v=>opt("radio", v)).join("");
+  if (q.type==="many") body = q.o.map(v=>opt("checkbox", v)).join("");
+  if (q.type==="nps") body = `<div class="svnps">${[...Array(11).keys()].map(i=>`<label class="svn"><input type="radio" name="nps" value="${i}" aria-label="${i} sur 10"><span>${i}</span></label>`).join("")}</div>
+     <div class="muted" style="font-size:12px;display:flex;justify-content:space-between;max-width:420px"><span>0 = pas du tout</span><span>10 = sans hésiter</span></div>`;
+  if (q.type==="text") body = `<textarea name="${q.id}" rows="3" maxlength="600" style="width:100%;box-sizing:border-box"></textarea>`;
+  if (q.other) body += `<input type="text" name="${q.id}_autre" maxlength="120" placeholder="${esc(q.otherLabel||"Autre (précisez)")}" class="svother">`;
+  if (q.type==="contact") body += `<div class="svcontact"><input type="text" name="contact" maxlength="120" placeholder="Prénom et téléphone ou e-mail (facultatif)" class="svother">
+     <label class="muted" style="font-size:12px;display:flex;gap:6px;align-items:flex-start;margin-top:4px"><input type="checkbox" name="consent" value="1" style="margin-top:2px">J'accepte que LH Sport Club me recontacte pour organiser une séance d'essai. Mes coordonnées ne servent à rien d'autre.</label></div>`;
+  return `<fieldset><legend>${n}. ${esc(q.t)}${q.hint ? ` <span class="muted" style="font-weight:400;font-size:12px">${esc(q.hint)}</span>` : ""}</legend>${body}</fieldset>`;
+}
+
+function surveySection(){
+  return `<style>
+  .sv fieldset{border:0;padding:0;margin:14px 0 0;min-width:0}.sv legend{font-weight:600;font-size:14px;padding:0;margin-bottom:6px}
+  .svopt{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:5px 11px;margin:3px 4px 3px 0;cursor:pointer;font-size:13px;background:var(--card);max-width:100%;box-sizing:border-box}
+  .svopt input{accent-color:#e30613;margin:0;flex:none}.svopt:has(input:checked){border-color:#e30613;background:color-mix(in srgb,#e30613 12%,var(--card))}
+  .svopt:focus-within,.svn:focus-within{outline:2px solid var(--focus);outline-offset:1px}
+  .svnps{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}.svn{position:relative}.svn input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+  .svn span{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--card)}
+  .svn input:checked+span{background:#e30613;border-color:#e30613;color:#fff;font-weight:600}
+  .svother{display:block;width:100%;max-width:420px;box-sizing:border-box;margin-top:6px}
+  .svbtn{background:#e30613;color:#fff;border:0;border-radius:8px;padding:9px 16px;font-weight:600;cursor:pointer}
+  .svbtn2{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}
+  .svbtn2:disabled{opacity:.5;cursor:default}
+  .svrow{display:grid;grid-template-columns:minmax(0,1fr) 44px 40px;gap:8px;align-items:center;font-size:13px;padding:2px 0}
+  .svbar{height:8px;background:var(--soft);border-radius:4px;overflow:hidden;grid-column:1/-1;margin-bottom:4px}.svbar i{display:block;height:100%;background:#e30613}
+  </style>
+  <h3 data-nav="Questionnaire">Questionnaire : adhérents, anciens adhérents, futurs adhérents</h3>
+  <p class="muted" style="margin:0 0 8px">À remplir à l'accueil sur une tablette ou un téléphone, ou en appelant la personne. Une question pour savoir qui répond, puis 5 questions adaptées. « Comment avez-vous connu le club ? » mesure ce qui marche parmi les recommandations ci-dessus. Les réponses sont enregistrées <b>dans ce navigateur, sur cet appareil uniquement</b> : exportez-les en CSV pour les garder ou les regrouper.</p>
+  <div class="two">
+   <form class="card sv" id="svForm" autocomplete="off">
+    <fieldset style="margin-top:0"><legend>1. Vous êtes…</legend>${SV.who.map(([k,l])=>`<label class="svopt"><input type="radio" name="who" value="${k}"><span>${esc(l)}</span></label>`).join("")}</fieldset>
+    <div id="svQs"><p class="muted" style="font-size:13px;margin:12px 0 0">Choisissez d'abord qui répond : les questions s'affichent ensuite.</p></div>
+    <div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="submit" class="svbtn">Enregistrer la réponse</button><span id="svMsg" role="status" style="font-size:13px"></span></div>
+   </form>
+   <div class="card" id="svRes"></div>
+  </div>`;
+}
+
+function svTally(list, q){
+  const c = {}; let n = 0; const other = [];
+  for (const r of list){ const v = r.a[q.id]; const o = r.autre && r.autre[q.id];
+    if (o) other.push(o);
+    const vs = Array.isArray(v) ? v : (v==null || v==="" ? [] : [v]); if (!vs.length && !o) continue; n++;
+    vs.forEach(x=>c[x] = (c[x]||0) + 1); if (o && !vs.length) c["Autre"] = (c["Autre"]||0) + 1; }
+  return {n, rows: Object.entries(c).sort((a,b)=>b[1]-a[1]), other};
+}
+
+function svResults(){
+  const box = document.getElementById("svRes"); if (!box) return;
+  const all = svLoad(), list = all.filter(r=>r.who===svView), lab = Object.fromEntries(SV.who);
+  const pl = (n, w)=>`${n} ${w}${n>1?"s":""}`;
+  const none = `<div class="muted" style="font-size:12px">Aucune réponse</div>`;
+  const bars = (t, n)=>t.rows.map(([k,v])=>`<div class="svrow"><span>${esc(k)}</span><b style="text-align:right">${v}</b><span class="muted" style="text-align:right">${Math.round(100*v/n)} %</span><div class="svbar"><i style="width:${(100*v/n).toFixed(1)}%"></i></div></div>`).join("");
+  const blocks = SV.q[svView].map((q,i)=>{
+    const head = `<div style="margin-top:12px"><b style="font-size:13px">${i+2}. ${esc(q.t)}</b>`;
+    if (q.type==="text"){ const tx = list.filter(r=>r.a[q.id]).slice(-8).reverse();
+      return head + (tx.length ? `<ul class="pl" style="font-size:13px">${tx.map(r=>`<li>${esc(r.a[q.id])} <span class="muted" style="font-size:11px">${esc(new Date(r.at).toLocaleDateString("fr-FR"))}</span></li>`).join("")}</ul>` : none) + `</div>`; }
+    if (q.type==="nps"){ const v = list.map(r=>r.a.nps).filter(x=>typeof x==="number");
+      if (!v.length) return head + none + `</div>`;
+      const pro = v.filter(x=>x>=9).length, det = v.filter(x=>x<=6).length, score = Math.round(100*(pro-det)/v.length);
+      return head + `<div style="font-size:13px;margin-top:4px"><b style="font-size:20px">${score>0?"+":""}${score}</b> <span class="muted">score de recommandation (NPS), ${pl(v.length,"réponse")} · moyenne ${(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1).replace(".",",")}/10</span></div>
+        <div class="muted" style="font-size:12px">${pl(pro,"promoteur")} (9–10) · ${pl(v.length-pro-det,"neutre")} (7–8) · ${pl(det,"détracteur")} (0–6). Au-dessus de 0 : plus de fans que de déçus ; au-dessus de +50 : excellent.</div></div>`; }
+    const t = svTally(list, q);
+    let out = head + (t.n ? `<div class="muted" style="font-size:12px;margin-bottom:2px">${pl(t.n,"réponse")}</div>${bars(t, t.n)}` : none);
+    if (t.other.length) out += `<div class="muted" style="font-size:12px">Autres réponses : ${t.other.slice(-8).map(esc).join(" · ")}</div>`;
+    if (q.type==="contact"){ const ct = list.filter(r=>r.contact);
+      if (ct.length) out += `<div style="font-size:13px;margin-top:6px"><b>À rappeler pour une séance d'essai (${ct.length})</b><ul class="pl">${ct.slice().reverse().map(r=>`<li>${esc(r.contact)} <span class="muted" style="font-size:11px">${esc(r.a.trial||"")} · ${esc(new Date(r.at).toLocaleDateString("fr-FR"))}</span></li>`).join("")}</ul></div>`; }
+    return out + `</div>`;
+  }).join("");
+  box.innerHTML = `<b>Résultats</b> <span class="muted">— ${pl(all.length,"réponse")} sur cet appareil</span>
+    <div class="seg" id="svSeg" role="group" aria-label="Résultats par profil" style="margin:8px 0 2px;flex-wrap:wrap">${SV.who.map(([k,l])=>`<button type="button" data-w="${k}" aria-pressed="${k===svView}">${esc(l)} · ${all.filter(r=>r.who===k).length}</button>`).join("")}</div>
+    ${list.length ? blocks : `<p class="muted" style="font-size:13px">Pas encore de réponse « ${esc(lab[svView])} ».</p>`}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button type="button" class="svbtn2" id="svCsv" ${all.length?"":"disabled"}>Exporter en CSV (Excel)</button><button type="button" class="svbtn2" id="svDel" ${all.length?"":"disabled"}>Effacer toutes les réponses</button></div>`;
+  box.querySelector("#svSeg").onclick = e=>{ const b = e.target.closest("button"); if (!b) return; svView = b.dataset.w; svResults(); };
+  box.querySelector("#svCsv").onclick = svCsv;
+  box.querySelector("#svDel").onclick = ()=>{ if (confirm(`Effacer les ${all.length} réponses enregistrées sur cet appareil ? Pensez à exporter le CSV avant.`)){ svSave([]); svResults(); } };
+}
+
+function svCsv(){
+  const all = svLoad(), lab = Object.fromEntries(SV.who), cols = [];
+  for (const [k] of SV.who) for (const q of SV.q[k]){ cols.push([k, q.id, false, `${lab[k]} – ${q.t}`]); if (q.other) cols.push([k, q.id, true, `${lab[k]} – ${q.t} (autre)`]); }
+  const cell = v=>{ const s = v==null ? "" : Array.isArray(v) ? v.join(" | ") : String(v); return /[;"\r\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
+  const lines = [["Date","Profil",...cols.map(c=>c[3]),"Coordonnées (accord donné)"].map(cell).join(";")];
+  for (const r of all) lines.push([new Date(r.at).toLocaleString("fr-FR"), lab[r.who],
+    ...cols.map(([k,id,isO])=> r.who!==k ? "" : isO ? (r.autre||{})[id] : r.a[id]), r.contact||""].map(cell).join(";"));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"}));
+  a.download = `questionnaire-lh-sport-club-${new Date().toISOString().slice(0,10)}.csv`; document.body.appendChild(a); a.click(); a.remove();
+}
+
+function bindSurvey(){
+  const f = document.getElementById("svForm"); if (!f) return;
+  const qs = f.querySelector("#svQs"), msg = f.querySelector("#svMsg");
+  const say = (t, ok)=>{ msg.textContent = t; msg.style.color = ok ? "var(--up)" : "var(--down)"; };
+  f.onchange = e=>{ if (e.target.name!=="who") return; svView = e.target.value;
+    qs.innerHTML = SV.q[svView].map((q,i)=>svQuestion(q, i+2)).join(""); msg.textContent = ""; svResults(); };
+  f.onsubmit = e=>{ e.preventDefault();
+    const fd = new FormData(f), who = fd.get("who");
+    if (!who) return say("Choisissez d'abord qui répond (question 1).");
+    const a = {}, autre = {};
+    for (const q of SV.q[who]){
+      if (q.type==="many"){ const v = fd.getAll(q.id); if (v.length) a[q.id] = v; }
+      else if (q.type==="nps"){ const v = fd.get("nps"); if (v!=null) a.nps = +v; }
+      else { const v = (fd.get(q.id)||"").toString().trim(); if (v) a[q.id] = v; }
+      const o = (fd.get(q.id+"_autre")||"").toString().trim(); if (o) autre[q.id] = o;
+    }
+    const contact = (fd.get("contact")||"").toString().trim();
+    if (contact && !fd.get("consent")) return say("Cochez l'accord pour enregistrer les coordonnées, ou laissez le champ vide.");
+    if (!Object.keys(a).length && !Object.keys(autre).length) return say("Répondez au moins à une question.");
+    const list = svLoad(); list.push({id: Date.now().toString(36), at: new Date().toISOString(), who, a, autre, contact: contact || undefined});
+    if (!svSave(list)) return say("Impossible d'enregistrer : ce navigateur bloque le stockage (navigation privée ?).");
+    f.reset(); qs.innerHTML = `<p class="muted" style="font-size:13px;margin:12px 0 0">Choisissez qui répond pour une nouvelle réponse.</p>`;
+    svView = who; svResults(); say("Merci, réponse enregistrée ✓", true);
+  };
+  svResults();
 }
