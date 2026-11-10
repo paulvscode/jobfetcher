@@ -360,6 +360,14 @@ code{background:var(--soft);padding:1px 5px;border-radius:4px}
 .tree .grp{font-weight:600}.fl{font-size:11px;padding:0 6px;border-radius:999px;background:var(--lv4);white-space:nowrap}.fl.bad{background:var(--lv5)}.fl.ok{background:var(--lv1)}
 .reco{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--card)}
 .reco h4{margin:0 0 4px;font-size:14px}.reco .why{font-size:13px;margin:6px 0}
+nav#tabs button.clubtab{background:#e30613;border-color:#e30613;color:#fff;font-weight:600}
+nav#tabs button.clubtab:hover{background:#c00510}
+nav#tabs button.clubtab.on{background:#000;border-color:#000;color:#fff;box-shadow:inset 0 -3px 0 #e30613}
+#clubNav{position:sticky;top:0;z-index:20;display:flex;flex-wrap:nowrap;gap:4px;align-items:center;overflow-x:auto;white-space:nowrap;background:#000;border-radius:12px;padding:6px 8px;margin:0 0 12px;scrollbar-width:thin}
+#clubNav .cn-t{color:#fff;font-weight:700;padding:4px 10px 4px 4px;border-right:2px solid #e30613;margin-right:4px}
+#clubNav a{color:#fff;text-decoration:none;font-size:13px;padding:5px 10px;border-radius:999px;flex:none}
+#clubNav a:hover,#clubNav a.on{background:#e30613;color:#fff}
+#g-club [data-nav]{scroll-margin-top:64px}
 .paste{position:relative;margin-top:8px}.paste pre{background:var(--soft);border-radius:8px;padding:10px;max-height:320px;overflow:auto;font-size:12px;white-space:pre-wrap;word-break:break-word;margin:4px 0 0}
 .paste .pin{position:absolute;right:6px;top:22px;font-size:12px;padding:2px 8px}
 @media (max-width:600px){.spark{width:70px}td.l{min-width:160px}}
@@ -401,7 +409,7 @@ code{background:var(--soft);padding:1px 5px;border-radius:4px}
 </section>
 
 <section id="v-gym" hidden>
- <div class="card"><div class="dh"><div><h2 style="margin:0 0 4px;font-size:18px">Salles de sport — ville du Havre</h2>
+ <div class="card" id="gHead"><div class="dh"><div><h2 style="margin:0 0 4px;font-size:18px">Salles de sport — ville du Havre</h2>
   <p class="muted" style="margin:0" id="gIntro"></p></div>
   <div class="seg" id="gView" role="group" aria-label="Vue"><button data-v="comp" aria-pressed="true">Concurrents</button><button data-v="rank" aria-pressed="false">Classement</button><button data-v="market" aria-pressed="false">Marché</button><button data-v="club" aria-pressed="false" id="gClubBtn" hidden>Focus LH Sport Club</button></div></div>
   <div class="kp" id="gKpi"></div>
@@ -691,7 +699,10 @@ document.getElementById("tabs").onclick = e=>{
   const b = e.target.closest("button"); if (!b) return;
   view = b.dataset.t;
   document.querySelectorAll("#tabs button").forEach(x=>x.classList.toggle("on", x===b));
-  const isFocus = view.startsWith("focus:"), isLocal = view==="local", isGym = view==="gym";
+  const isFocus = view.startsWith("focus:"), isLocal = view==="local", isGym = view==="gym" || view==="club";
+  if (view==="club") gView = "club"; else if (view==="gym" && gView==="club") gView = "comp";
+  document.getElementById("gHead").hidden = view==="club";
+  document.querySelectorAll("#gView button").forEach(x=>x.setAttribute("aria-pressed", x.dataset.v===gView));
   document.getElementById("v-themes").hidden = view!=="themes";
   document.getElementById("v-list").hidden = view==="themes" || isFocus || isLocal || isGym;
   document.getElementById("v-focus").hidden = !isFocus;
@@ -709,6 +720,8 @@ document.getElementById("tabs").onclick = e=>{
 const tabs = document.getElementById("tabs");
 D.focus.forEach(f=>{ const b=document.createElement("button"); b.dataset.t="focus:"+f.key;
   b.textContent = f.title.split(" et ")[0]; tabs.appendChild(b); });
+if (D.club || D.clubEnc){ const b=document.createElement("button"); b.dataset.t="club"; b.className="clubtab";
+  b.textContent = "LH Sport Club"; tabs.appendChild(b); }
 let focusChart;
 function renderFocus(f){
   const byCode = Object.fromEntries(D.jobs.map(j=>[j.c,j]));
@@ -1084,8 +1097,6 @@ function renderGym(){
       document.querySelectorAll("#gView button").forEach(x=>x.setAttribute("aria-pressed", x===b)); showGymView(); };
     document.getElementById("gFlowNaf").innerHTML = (G.naf||[]).map(n=>`<option value="${n.c}">${esc(n.l)}</option>`).join("");
     document.getElementById("gFlowNaf").oninput = drawGymFlow;
-    const cb = document.getElementById("gClubBtn");
-    if (D.club || D.clubEnc) cb.hidden = false;
   }
   showGymView();
 }
@@ -1462,7 +1473,7 @@ function renderClub(){
      <p class="note">${esc(K.search_note)}</p></div>`
   };
   el.innerHTML = `
-  <div class="card" style="margin-top:14px"><div class="dh"><div><h2 style="margin:0 0 4px;font-size:18px">${esc(K.name)} — diagnostic</h2>
+  <div class="card" data-nav="Diagnostic" style="margin-top:14px"><div class="dh"><div><h2 style="margin:0 0 4px;font-size:18px">${esc(K.name)} — diagnostic</h2>
     <p class="muted" style="margin:0">Relevé du ${esc(K.checked.split("-").reverse().join("/"))} · audit technique du ${esc((mine.checked||"").split("-").reverse().join("/"))} · ${link(K.site, K.site.replace(/^https?:\/\//,"").replace(/\/$/,""))}</p></div></div>
    <p style="margin:10px 0 0">${esc(K.summary)}</p>
    <div class="kp">
@@ -1474,12 +1485,12 @@ function renderClub(){
      <span>réponses IA testées qui citent le club</span></div>
    </div></div>
 
-  <div class="two">
+  <div class="two" data-nav="Forces et faiblesses">
    <div class="card"><b class="up">Ce que le club fait mieux que les concurrents</b>${ul(K.better||[])}</div>
    <div class="card"><b class="down">Ce que le club fait moins bien</b>${ul(K.worse||[])}</div>
   </div>
 
-  <div class="two">
+  <div class="two" data-nav="Classement et prix">
    <div class="card"><b>Position sur chaque critère du classement</b> <span class="muted">(points sur 100)</span>
     ${pos ? `<div class="tw" style="margin-top:8px"><table class="plain"><thead><tr><th>Critère</th><th class="n">Le club</th><th class="n">Médiane des autres</th><th class="n">Rang</th></tr></thead><tbody>
      ${pos.rows.map(r=>`<tr><td>${esc(r.l)}</td><td class="n"><b>${r.v==null ? "—" : Math.round(r.v)}</b></td><td class="n">${r.med==null ? "—" : Math.round(r.med)}</td>
@@ -1488,7 +1499,7 @@ function renderClub(){
    <div class="card"><b>Prix et réputation</b> <span class="muted">(salles de fitness et low cost ; taille = nombre d'avis)</span><div class="cw"><canvas id="cBub"></canvas></div></div>
   </div>
 
-  <div class="card" style="margin-top:14px"><b>HYROX</b>${ul(K.hyrox.facts||[])}
+  <div class="card" data-nav="HYROX" style="margin-top:14px"><b>HYROX</b>${ul(K.hyrox.facts||[])}
    <div class="two" style="margin-top:4px">
     <div><b style="font-size:13px">Ce que donne l'affiliation</b><p style="margin:6px 0">${esc(K.hyrox.affiliation)}</p>
      <b style="font-size:13px">Concurrence locale</b><p style="margin:6px 0">${esc(K.hyrox.local)}</p></div>
@@ -1497,7 +1508,7 @@ function renderClub(){
      <p class="note">Une course proche dans le temps = un objectif à proposer aux adhérents (programme de préparation, déplacement en groupe).</p></div>
    </div></div>
 
-  <div class="two">
+  <div class="two" data-nav="Identité et offre">
    <div class="card"><b>Fiche d'identité</b><div class="tw" style="margin-top:8px"><table class="plain"><tbody>
     ${(K.identity||[]).map(r=>`<tr><td style="vertical-align:top"><b>${esc(r[0])}</b></td><td class="l">${esc(r[1])} ${r[2] ? link(r[2], "source") : ""}</td></tr>`).join("")}</tbody></table></div></div>
    <div class="card"><b>Offre</b>${ul(K.offer||[])}
@@ -1505,29 +1516,49 @@ function renderClub(){
      <div><span class="up" style="font-size:13px">Points forts</span>${ul(K.reviews.pos||[])}</div><div><span class="down" style="font-size:13px">Points de vigilance</span>${ul(K.reviews.neg||[])}</div></div></div>
   </div>
 
-  <h3>Visibilité en ligne</h3>
+  <h3 data-nav="Visibilité en ligne">Visibilité en ligne</h3>
   <div class="seg" id="cPane" role="group" aria-label="Volet" style="margin-bottom:10px">${["SEO","GEO","AEO"].map(p=>`<button data-p="${p}" aria-pressed="${p===cPane}">${p} · ${PS[p] ?? "—"} %</button>`).join("")}</div>
   ${["SEO","GEO","AEO"].map(p=>`<div class="cpane" data-p="${p}" ${p===cPane ? "" : "hidden"}>${panes[p]}</div>`).join("")}
 
-  ${typeof marketSection === "function" ? marketSection(K) : ""}
-
   ${crawlSection(K, CLUB.crawl, mine)}
 
-  <h3>Plan d'action</h3>
+  <h3 data-nav="Plan d'action">Plan d'action</h3>
   <div class="tw"><table class="plain"><thead><tr><th class="n">Priorité</th><th>Domaine</th><th>Action</th><th>Pourquoi</th><th>Comment</th><th>Effort</th></tr></thead><tbody>
    ${(K.actions||[]).sort((a,b)=>a.p-b.p).map(x=>`<tr><td class="n"><b>${x.p}</b></td><td><span class="tag" style="background:color-mix(in srgb, var(${AREA[x.area]||"--c6"}) 22%, transparent)">${esc(x.area)}</span></td>
      <td class="l" style="min-width:180px"><b>${esc(x.t)}</b></td><td class="l" style="font-size:12px">${esc(x.why)}</td><td class="l" style="font-size:12px;min-width:280px">${esc(x.how)}</td><td class="l" style="font-size:12px;min-width:90px">${esc(x.effort)}</td></tr>`).join("")}
   </tbody></table></div>
   <p class="note">Priorité 1 = ce mois-ci, 2 = ce trimestre, 3 = dans les six mois. L'audit technique se met à jour à chaque collecte hebdomadaire ; le reste de la section (fichier club.json) est un relevé daté à refaire chaque trimestre.</p>
 
-  ${(K.methods||[]).length ? `<div class="card" style="margin-top:14px"><b>Méthode : comment chaque test a été fait</b>
+  ${(K.methods||[]).length ? `<div class="card" data-nav="Méthode" style="margin-top:14px"><b>Méthode : comment chaque test a été fait</b>
    ${K.methods.map(m=>`<details style="margin-top:8px"><summary style="cursor:pointer"><b style="font-size:13px">${esc(m.t)}</b></summary>${ul(m.items)}</details>`).join("")}</div>` : ""}`;
   document.getElementById("cPane").onclick = e=>{ const btn = e.target.closest("button"); if (!btn) return; cPane = btn.dataset.p;
     document.querySelectorAll("#cPane button").forEach(x=>x.setAttribute("aria-pressed", x===btn));
     document.querySelectorAll(".cpane").forEach(d=>d.hidden = d.dataset.p!==cPane); };
   bindCrawl();
+  buildClubNav(el);
   drawClubChart();
 }
+// Section menu of the club focus: built from the [data-nav] blocks once the section is unlocked
+function buildClubNav(el){
+  const items = [...el.querySelectorAll("[data-nav]")];
+  items.forEach((x, i)=>x.id = "cn-"+i);
+  const nav = document.createElement("nav");
+  nav.id = "clubNav"; nav.setAttribute("aria-label", "Sections du focus LH Sport Club");
+  nav.innerHTML = `<span class="cn-t">LH Sport Club</span>` + items.map((x, i)=>`<a href="#cn-${i}" data-i="${i}">${esc(x.dataset.nav)}</a>`).join("");
+  el.prepend(nav);
+  nav.onclick = e=>{ const a = e.target.closest("a"); if (!a) return; e.preventDefault();
+    const t = items[+a.dataset.i];
+    if (t.classList.contains("rpane")){ const b = document.querySelector(`#rPane button[data-p="${t.dataset.p}"]`); if (b) b.click(); }
+    t.scrollIntoView({behavior:"smooth", block:"start"}); };
+}
+addEventListener("scroll", ()=>{          // highlight the section being read
+  const nav = document.getElementById("clubNav"); if (!nav || !nav.offsetParent) return;
+  let cur = null;
+  nav.querySelectorAll("a").forEach(a=>{ const t = document.getElementById("cn-"+a.dataset.i);
+    if (t && t.offsetParent && t.getBoundingClientRect().top < 120) cur = a; });
+  nav.querySelectorAll("a").forEach(a=>a.classList.toggle("on", a===cur));
+  if (cur) cur.scrollIntoView({block:"nearest", inline:"nearest"});
+}, {passive:true});
 let cPane = "SEO";
 function drawClubChart(){
   if (!CLUB || !document.getElementById("cBub")) return;

@@ -108,7 +108,7 @@ function crawlSection(K, cr, a){
     ${f.pages.length ? `<details><summary class="muted" style="font-size:12px;cursor:pointer">voir le détail</summary><div class="muted" style="font-size:12px;word-break:break-all">${f.pages.map(esc).join("<br>")}</div></details>` : ""}</div></div>`).join("");
   const nFix = cat => fixes.filter(f=>f.cat===cat && f.s!=="ok").length;
   return `
-  <h3>Le site page par page</h3>
+  <h3 data-nav="Le site page par page">Le site page par page</h3>
   <div class="card"><b>Arborescence de ${esc(K.site.replace(/^https?:\/\//,"").replace(/\/$/,""))}</b> <span class="muted">— exploration complète du ${esc(fdate(cr.checked))} : plan du site + tous les liens internes suivis</span>
    <div class="kp">
     <div><b>${fmt(ok.length)}</b><span>pages en ligne (${fmt(cr.sitemap_n)} dans le plan du site)</span></div>
@@ -120,9 +120,11 @@ function crawlSection(K, cr, a){
    <p class="note">Chaque ligne : adresse · titre · mots propres à la page · nombre de pages qui y mènent · nombre de clics depuis l'accueil. ✓ rien à signaler · ! à améliorer · ✗ à corriger. Cliquez un groupe pour l'ouvrir ou le fermer.</p>
    ${crawlTree(cr)}</div>
 
-  <h3>Recommandations actives</h3>
-  <p class="muted" style="margin:0 0 8px">Tirées de la lecture des ${ok.length} pages. Chaque recommandation dit quoi faire, où, et donne le texte ou le code prêt à coller. En dessous, les correctifs page par page sont recalculés à chaque collecte : une ligne passe au vert quand c'est corrigé.</p>
-  <div class="seg" id="rPane" role="group" aria-label="Volet des recommandations" style="margin-bottom:10px">${["SEO","GEO","AEO"].map(p=>`<button data-p="${p}" aria-pressed="${p===rPane}">${p} · ${recos.filter(r=>r.cat===p).length} recommandations</button>`).join("")}</div>
+  <h3 data-nav="Recommandations">Recommandations actives</h3>
+  <p class="muted" style="margin:0 0 8px">Tirées de la lecture des ${ok.length} pages. SEO, GEO et AEO : quoi faire sur le site, avec le texte ou le code prêt à coller. « Avis et tendances » et « Marketing » : ce qui se passe hors du site. En dessous, les correctifs page par page sont recalculés à chaque collecte : une ligne passe au vert quand c'est corrigé.</p>
+  <div class="seg" id="rPane" role="group" aria-label="Volet des recommandations" style="margin-bottom:10px;flex-wrap:wrap">${["SEO","GEO","AEO"].map(p=>`<button data-p="${p}" aria-pressed="${p===rPane}">${p} · ${recos.filter(r=>r.cat===p).length}</button>`).join("")}${K.market ? `<button data-p="AVIS" aria-pressed="${rPane==="AVIS"}">Avis et tendances</button>` : ""}${K.playbook ? `<button data-p="MKT" aria-pressed="${rPane==="MKT"}">Marketing : ce que font les meilleurs</button>` : ""}</div>
+  ${K.market ? `<div class="rpane" data-p="AVIS" data-nav="Avis et tendances" ${rPane==="AVIS" ? "" : "hidden"}>${marketSection(K)}</div>` : ""}
+  ${K.playbook ? `<div class="rpane" data-p="MKT" data-nav="Marketing" ${rPane==="MKT" ? "" : "hidden"}>${playbookSection(K)}</div>` : ""}
   ${["SEO","GEO","AEO"].map(p=>`<div class="rpane" data-p="${p}" ${p===rPane ? "" : "hidden"}>
     ${recos.filter(r=>r.cat===p).sort((x,y)=>x.p-y.p).map(card).join("")}
     <div class="card"><b>Correctifs page par page — ${p}</b> <span class="muted">(${nFix(p)} point${nFix(p)>1?"s":""} à traiter, mis à jour à chaque collecte)</span>${fixRows(p)}</div></div>`).join("")}`;
@@ -161,7 +163,7 @@ function marketSection(K){
   const sRows = Object.entries(T.season).map(([k, s])=>{ const mx = Math.max(...s), mn = Math.min(...s);
     return `<tr><td class="f"><b>${esc(k)}</b></td>${s.map(v=>{ const x = (v-mn)/((mx-mn)||1); return `<td style="background:var(${x>.8?"--lv5":x>.6?"--lv4":x>.4?"--lv3":x>.2?"--lv2":"--lv1"})">${v}</td>`; }).join("")}</tr>`; }).join("");
   return `
-  <h3>Ce que reprochent les clients des autres salles</h3>
+  <h3 style="margin-top:4px">Ce que reprochent les clients des autres salles</h3>
   <p class="muted" style="margin:0 0 8px">Avis Google Maps de ${M.gyms.length} salles du Havre et de Gonfreville, relevés le ${esc(fdate(M.checked))}, et 168 avis Trustpilot sur les chaînes. Ce que les clients reprochent ailleurs et que le club fait mieux, c'est ce qu'il faut écrire sur le site.</p>
   <div class="card"><b>Les 7 sujets, et où en est le club</b>${M.themes.map(theme).join("")}</div>
   <div class="tw" style="margin:10px 0"><table class="plain"><thead><tr><th>Salle</th><th class="n">Note</th><th class="n">Avis</th><th class="n">1–2 étoiles</th><th>Sujets les plus cités par Google</th><th>Reproches relevés dans les avis</th></tr></thead><tbody>${gRows}</tbody></table></div>
@@ -182,4 +184,26 @@ function marketSection(K){
   <div class="card"><b>Pages à écrire, par ordre de priorité</b>
    ${T.pages.map(p=>`<div class="chk"><span class="tag" style="background:var(${p.p===1?"--lv5":p.p===2?"--lv4":"--lv3"})">Priorité ${p.p}</span><div style="flex:1"><b style="font-size:13px">${esc(p.t)}</b>
      <div class="muted" style="font-size:12px">Recherches visées : ${esc(p.kw)}</div><div style="font-size:13px">${esc(p.why)}</div></div></div>`).join("")}</div>`;
+}
+
+// ---- what the most successful gyms do (club.json "playbook") ----------------------------------
+function playbookSection(K){
+  const B = K.playbook; if (!B) return "";
+  const host = u => { try { return new URL(u).hostname.replace(/^www\./,""); } catch(e){ return u; } };
+  const pcol = p => p===1?"--lv5":p===2?"--lv4":"--lv3";
+  return `
+  <h3 style="margin-top:4px">Ce que font les salles qui attirent le plus de monde</h3>
+  <p class="muted" style="margin:0 0 8px">Recherche du ${esc(fdate(B.checked))}, dans le monde entier. Pour chaque exemple : le chiffre qui prouve le succès, ce qu'ils font, et ce que le club peut reprendre à son échelle.</p>
+  <div class="card"><b>Actions pour le club, par ordre de priorité</b>
+   ${B.actions.map(a=>`<div class="chk"><span class="tag" style="background:var(${pcol(a.p)})">Priorité ${a.p}</span><div style="flex:1"><b style="font-size:13px">${esc(a.t)}</b>
+     <div class="muted" style="font-size:12px">Coût : ${esc(a.cost)} · Temps : ${esc(a.effort)} · Inspiré de : ${esc(a.from)}</div>
+     <ol class="pl" style="font-size:13px">${a.steps.map(x=>`<li>${esc(x)}</li>`).join("")}</ol></div></div>`).join("")}</div>
+  <div class="card" style="margin-top:10px"><b>Calendrier sur 12 mois</b> <span class="muted">— calé sur les pics de recherche Google et les saisons de courses HYROX</span>
+   <div class="tw" style="margin-top:8px"><table class="plain"><tbody>${B.calendar.map(([m,t])=>`<tr><td><b>${esc(m)}</b></td><td style="white-space:normal">${esc(t)}</td></tr>`).join("")}</tbody></table></div></div>
+  <div class="card" style="margin-top:10px"><b>Les exemples</b>
+   ${B.leaders.map(l=>`<div class="reco" style="margin-top:10px"><h4 style="margin:0">${esc(l.who)}</h4><div class="up" style="font-size:13px;font-weight:600;margin:2px 0 4px">${esc(l.fig)}</div>
+     <div style="font-size:13px"><span class="muted">Ce qu'ils font :</span> ${esc(l.what)}</div>
+     <div style="font-size:13px;margin-top:4px"><b>Pour LH Sport Club :</b> ${esc(l.lh)}</div>
+     <div class="muted" style="font-size:12px;margin-top:4px">Sources : ${l.src.map(u=>link(u, host(u))).join(" · ")}</div></div>`).join("")}
+   <p class="note">${esc(B.note)}</p></div>`;
 }
