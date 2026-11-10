@@ -1,20 +1,25 @@
-# Collects the data every month and publishes the dashboard on GitHub Pages.
-# Needs two repository secrets: FT_CLIENT_ID and FT_CLIENT_SECRET (France Travail API).
-name: Collect data and publish
+# Rebuilds and deploys the site from the latest data snapshot (a few minutes).
+# Runs on every push to main, from the "Run workflow" button, and after each weekly collection.
+# If no snapshot exists yet (first run, or none in the last 90 days), it collects the data itself (~25 min).
+name: Publish site
 
 on:
-  schedule:
-    - cron: "0 5 5 * *"     # 5th of each month, 05:00 UTC
-  workflow_dispatch:          # "Run workflow" button in the Actions tab
+  push:
+    branches: [main]
+    paths-ignore: ["README.md", ".gitignore"]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      same_run:
+        description: "Use the snapshot uploaded earlier in the same run"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 jobs:
   build:
@@ -24,21 +29,62 @@ jobs:
       FT_CLIENT_ID: ${{ secrets.FT_CLIENT_ID }}
       FT_CLIENT_SECRET: ${{ secrets.FT_CLIENT_SECRET }}
       PUBLIC_PERSON_NAMES: ${{ vars.PUBLIC_PERSON_NAMES }}   # optional repository variable, "1" to show sole traders' names
-      CLUB_PASSWORD: ${{ secrets.CLUB_PASSWORD }}            # opens club.json.enc and encrypts the client section
-      PAGESPEED_API_KEY: ${{ secrets.PAGESPEED_API_KEY }}    # optional, Google PageSpeed scores in the website audit
+      CLUB_PASSWORD: ${{ secrets.CLUB_PASSWORD }}            # decrypts the snapshot and club.json.enc, encrypts the client section
+      PAGESPEED_API_KEY: ${{ secrets.PAGESPEED_API_KEY }}
       PYTHONIOENCODING: utf-8
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
       - run: pip install -r requirements.txt
+
+      - name: Snapshot from this run
+        if: ${{ inputs.same_run }}
+        uses: actions/download-artifact@v4
+        with:
+          name: data-snapshot
+      - name: Latest snapshot from an earlier run
+        id: latest
+        if: ${{ !inputs.same_run }}
+        run: |
+          run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=data-snapshot&per_page=20" \
+            --jq '[.artifacts[] | select(.expired | not)] | sort_by(.created_at) | last | .workflow_run.id // empty')
+          if [ -n "$run_id" ]; then
+            gh run download "$run_id" -n data-snapshot -R "$GITHUB_REPOSITORY"
+            echo "found=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "No snapshot yet: collecting the data in this run."
+            echo "found=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Restore the database
+        if: ${{ inputs.same_run || steps.latest.outputs.found == '1' }}
+        run: python snapshot.py unpack
+
+      # First run only: no snapshot anywhere, so collect everything once and save it
       - name: Job market statistics (France Travail)
+        if: ${{ !inputs.same_run && steps.latest.outputs.found == '0' }}
         run: python collect.py
       - name: Businesses and local services (Sirene, BPE)
+        if: ${{ !inputs.same_run && steps.latest.outputs.found == '0' }}
         run: python collect_territory.py
       - name: Website audit (SEO / GEO / AEO)
+        if: ${{ !inputs.same_run && steps.latest.outputs.found == '0' }}
         run: python site_audit.py
+      - name: Save the database (encrypted)
+        if: ${{ !inputs.same_run && steps.latest.outputs.found == '0' }}
+        run: python snapshot.py pack
+      - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.same_run && steps.latest.outputs.found == '0' }}
+        with:
+          name: data-snapshot
+          path: data.snapshot
+          retention-days: 90
+          compression-level: 0
+
       - name: Data checks (prices, company register, freshness, statistics)
         run: python validate.py
       - name: Build the site
@@ -51,6 +97,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

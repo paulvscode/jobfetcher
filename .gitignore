@@ -8,3 +8,4 @@ jobs.backup-*.db
 dashboard.html
 site/
 club.json
+data.snapshot

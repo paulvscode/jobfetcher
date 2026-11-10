@@ -1,0 +1,56 @@
+# Weekly data collection (~25 min), then publication.
+# Saves the database as an encrypted snapshot (artifact "data-snapshot", kept 90 days),
+# which the "Publish site" workflow reuses so it can rebuild the site in a few minutes.
+# Secrets: FT_CLIENT_ID, FT_CLIENT_SECRET (France Travail), CLUB_PASSWORD (encryption),
+# PAGESPEED_API_KEY (optional).
+name: Collect data (weekly)
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"       # every Monday, 04:00 UTC
+  workflow_dispatch:          # "Run workflow" button in the Actions tab
+
+permissions:
+  contents: read
+  actions: read
+  pages: write
+  id-token: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      FT_CLIENT_ID: ${{ secrets.FT_CLIENT_ID }}
+      FT_CLIENT_SECRET: ${{ secrets.FT_CLIENT_SECRET }}
+      CLUB_PASSWORD: ${{ secrets.CLUB_PASSWORD }}
+      PAGESPEED_API_KEY: ${{ secrets.PAGESPEED_API_KEY }}
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Job market statistics (France Travail)
+        run: python collect.py
+      - name: Businesses and local services (Sirene, BPE)
+        run: python collect_territory.py
+      - name: Website audit (SEO / GEO / AEO)
+        run: python site_audit.py
+      - name: Save the database (encrypted)
+        run: python snapshot.py pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: data-snapshot
+          path: data.snapshot
+          retention-days: 90
+          compression-level: 0
+
+  publish:
+    needs: collect
+    uses: ./.github/workflows/publish.yml
+    secrets: inherit
+    with:
+      same_run: true

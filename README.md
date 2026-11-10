@@ -85,23 +85,34 @@ and as a ✓ / ! next to each gym name.
   Put the same `CLUB_PASSWORD` in `.env` and in the repository secrets. Without it, the section
   is left out of the public site.
 
-The statistics are published **quarterly**, so running `collect.py` once a month
-is enough. Each run refreshes everything; the API itself returns history back to 2020.
+The statistics are published **quarterly**; the weekly run mainly refreshes Sirene,
+the website audit and the data checks. Each run refreshes everything; the API itself returns history back to 2020.
 
-## Publish on GitHub Pages (free, updated every month)
+## Publish on GitHub Pages (free, data refreshed every week)
 
 `python publish.py` builds a static website in `site/` (dashboard, report and
-establishment lists; no keys, no database). The GitHub workflow in
-`.github/workflows/publish.yml` does the whole thing every month on GitHub:
-collect, build, publish.
+establishment lists; no keys, no database). Two GitHub workflows do it online:
+
+| Workflow | When | Time | What it does |
+|---|---|---|---|
+| **Collect data (weekly)** — `collect.yml` | Mondays 04:00 UTC, or *Run workflow* | ~25 min | Collects everything, saves the database as an encrypted snapshot (artifact `data-snapshot`, kept 90 days), then publishes |
+| **Publish site** — `publish.yml` | Every push to `main`, or *Run workflow* | a few minutes | Restores the latest snapshot, runs the data checks, rebuilds and deploys the site |
+
+So editing `gyms.json` or the dashboard and pushing updates the site in a few minutes,
+without collecting again. If no snapshot exists yet (first run, or none in 90 days),
+*Publish site* collects the data itself once.
+
+The snapshot (`python snapshot.py pack` / `unpack`) is gzip + AES-256 encrypted with
+`CLUB_PASSWORD` (or `DATA_PASSWORD`): artifacts of a public repository can be downloaded
+by anyone, and the database holds sole traders' names.
 
 One-time setup:
 
 1. Create a **public** repository on GitHub and push this project to it.
 2. *Settings → Secrets and variables → Actions → New repository secret*: add
-   `FT_CLIENT_ID` and `FT_CLIENT_SECRET` (same values as in `.env`).
+   `FT_CLIENT_ID`, `FT_CLIENT_SECRET` and `CLUB_PASSWORD` (same values as in `.env`).
 3. *Settings → Pages → Build and deployment → Source*: choose **GitHub Actions**.
-4. *Actions → Collect data and publish → Run workflow* for the first run (~25 min).
+4. *Actions → Publish site → Run workflow* for the first run (~25 min, it collects the data).
    The site is then at `https://<your-user>.github.io/<repository>/`.
 
 Sole traders listed under their own name appear as "Entrepreneur individuel" on
