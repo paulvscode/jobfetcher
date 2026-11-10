@@ -85,6 +85,8 @@ jobs:
           retention-days: 90
           compression-level: 0
 
+      - name: Full crawl of the client's site (only if the snapshot has none)
+        run: python site_crawl.py --if-missing
       - name: Data checks (prices, company register, freshness, statistics)
         run: python validate.py
       - name: Build the site

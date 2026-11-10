@@ -39,6 +39,8 @@ jobs:
         run: python collect_territory.py
       - name: Website audit (SEO / GEO / AEO)
         run: python site_audit.py
+      - name: Full crawl of the client's site
+        run: python site_crawl.py
       - name: Save the database (encrypted)
         run: python snapshot.py pack
       - uses: actions/upload-artifact@v4
