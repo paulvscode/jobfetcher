@@ -1509,6 +1509,8 @@ function renderClub(){
   <div class="seg" id="cPane" role="group" aria-label="Volet" style="margin-bottom:10px">${["SEO","GEO","AEO"].map(p=>`<button data-p="${p}" aria-pressed="${p===cPane}">${p} · ${PS[p] ?? "—"} %</button>`).join("")}</div>
   ${["SEO","GEO","AEO"].map(p=>`<div class="cpane" data-p="${p}" ${p===cPane ? "" : "hidden"}>${panes[p]}</div>`).join("")}
 
+  ${typeof marketSection === "function" ? marketSection(K) : ""}
+
   ${crawlSection(K, CLUB.crawl, mine)}
 
   <h3>Plan d'action</h3>

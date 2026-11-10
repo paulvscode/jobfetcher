@@ -42,7 +42,7 @@
         {"n": "Pass journée", "price": 11.99, "unit": "seance"}
       ],
       "perks": ["h24", "d7", "video", "guest", "network", "freeze", "massage", "drinks", "nocommit"],
-      "rating": null, "reviews": null, "rating_src": "",
+      "rating": 4.6, "reviews": 1814, "rating_src": "Google Maps, moyenne des 3 clubs (4,6 · 4,7 · 4,6), relevé le 10/11/2026",
       "url": "https://www.basic-fit.com/fr-fr/salles-de-sport/le-havre",
       "sources": ["https://www.basic-fit.com/fr-fr/salles-de-sport/le-havre", "https://www.basic-fit.com/fr-fr/prix"],
       "official": true,
@@ -59,7 +59,7 @@
         {"n": "Prime", "price": 45, "unit": "4sem", "commit": "2 ans", "inc": "+ programmes personnalisés illimités, 4 bilans/an, −10 % shop, pause 4 semaines, suivi nutrition"}
       ],
       "perks": ["d7", "cours", "coaching", "video", "network", "guest", "body", "freeze", "student", "trial"],
-      "rating": null, "reviews": null, "rating_src": "",
+      "rating": 4.6, "reviews": 173, "rating_src": "Google Maps, relevé le 10/11/2026",
       "url": "https://www.lorangebleue.fr/clubs/le-havre-grand-hameau/",
       "sources": ["https://www.lorangebleue.fr/clubs/le-havre-grand-hameau/"],
       "official": true,
@@ -76,7 +76,7 @@
         {"n": "Prime", "price": 45, "unit": "4sem", "commit": "2 ans", "inc": "+ programmes personnalisés illimités, 4 bilans/an, −10 % shop, pause 4 semaines, suivi nutrition"}
       ],
       "perks": ["d7", "cours", "coaching", "video", "network", "guest", "body", "freeze", "sauna", "student", "trial"],
-      "rating": 4.0, "reviews": 101, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "rating": 4.1, "reviews": 108, "rating_src": "Google Maps, relevé le 10/11/2026",
       "url": "https://www.lorangebleue.fr/clubs/le-havre-centre/",
       "sources": ["https://www.lorangebleue.fr/clubs/le-havre-centre/", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
       "official": true,
@@ -93,7 +93,7 @@
         {"n": "Platinium", "price": 159.20, "unit": "mois", "commit": "6 mois", "inc": "Coaching individuel chaque semaine"}
       ],
       "perks": ["d7", "cours", "video", "small", "guest", "network", "freeze", "sauna", "parking", "coaching"],
-      "rating": 4.7, "reviews": 249, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "rating": 4.7, "reviews": 254, "rating_src": "Google Maps, relevé le 10/11/2026",
       "url": "https://www.keepcool.fr/salle-de-sport/le-havre",
       "sources": ["https://www.keepcool.fr/salle-de-sport/le-havre", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
       "official": true,
@@ -110,7 +110,7 @@
         {"n": "Ultra", "price": 43.96, "unit": "4sem", "commit": "Aucun (préavis 8 sem.)", "inc": "+ carte partageable avec une personne du foyer"}
       ],
       "perks": ["d7", "network", "nocommit", "drinks", "body", "guest", "women", "fight", "cross", "video"],
-      "rating": 4.7, "reviews": 171, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "rating": 4.8, "reviews": 248, "rating_src": "Google Maps, relevé le 10/11/2026",
       "url": "https://onair-fitness.fr/club/le-havre-la-nef/",
       "sources": ["https://onair-fitness.fr/club/le-havre-la-nef/", "https://onair-fitness.fr/abonnements/", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
       "official": true,
@@ -127,7 +127,7 @@
         {"n": "Accro Test", "price": 5, "unit": "seance", "inc": "Séance découverte, une fois par personne"}
       ],
       "perks": ["d7", "cours", "sauna", "pool", "network", "parking", "trial", "guest"],
-      "rating": 4.0, "reviews": 699, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "rating": 4.0, "reviews": 703, "rating_src": "Google Maps, relevé le 10/11/2026",
       "url": "https://accrosport.com/clubs/le-havre/",
       "sources": ["https://accrosport.com/clubs/le-havre/", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
       "official": true,
@@ -144,7 +144,7 @@
         {"n": "Séance découverte", "price": 10, "unit": "seance", "inc": "Déduite de l'abonnement si souscrit dans la semaine"}
       ],
       "perks": ["d7", "cours", "sauna", "cross", "nocommit", "freeze", "trial"],
-      "rating": 4.8, "reviews": 83, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "rating": 4.8, "reviews": 95, "rating_src": "Google Maps, relevé le 10/11/2026",
       "url": "https://www.planetefitness.com/gym/salle-de-sport-le-havre",
       "sources": ["https://www.planetefitness.com/gym/salle-de-sport-le-havre", "https://www.planetefitness.com/faq-questions-frequentes", "https://www.masalledesport.com/salle/14093,planete-fitness-le-havre,club-de-fitness,le-havre,76620,fr", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
       "official": true,
@@ -167,7 +167,7 @@
         {"n": "1 cours collectif", "price": 17, "unit": "seance"}
       ],
       "perks": ["d7", "cours", "cross", "fight", "student", "trial", "nocommit"],
-      "rating": 4.8, "reviews": 203, "rating_src": "Google (note via exo-sport.fr, juillet 2026 ; 203 avis selon le site du club, novembre 2026)",
+      "rating": 4.8, "reviews": 209, "rating_src": "Google Maps, relevé le 10/11/2026",
       "url": "https://lhsportclub.fr/",
       "sources": ["https://lhsportclub.fr/abonnements/", "https://lhsportclub.fr/", "https://lhsportclub.fr/hyrox/"],
       "official": true,
@@ -185,7 +185,7 @@
         {"n": "Découverte Étudiant", "price": 29.99, "unit": "mois", "commit": "Aucun", "reduced": true}
       ],
       "perks": ["d7", "coaching", "student", "nocommit"],
-      "rating": 4.9, "reviews": 129, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "rating": 4.9, "reviews": 130, "rating_src": "Google Maps, relevé le 10/11/2026",
       "url": "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre",
       "sources": ["https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
       "official": false,
@@ -198,7 +198,7 @@
       "fee": null, "commit": "",
       "plans": [],
       "perks": ["small", "coaching", "cross"],
-      "rating": 4.9, "reviews": 127, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "rating": 4.9, "reviews": 129, "rating_src": "Google Maps, relevé le 10/11/2026",
       "url": "https://wod-trip.com/box/crossfit-lentrepot-le-havre",
       "sources": ["https://exo-sport.fr/blog/meilleures-salles-sport-le-havre", "https://wod-trip.com/box/crossfit-lentrepot-le-havre", "https://www.masalledesport.com/salle/9092,crossfit-l-entrepot,box-crossfit,le-havre,76600,fr"],
       "official": false,
@@ -219,7 +219,7 @@
         {"n": "Drop-in", "price": 20, "unit": "seance"}
       ],
       "perks": ["d7", "small", "coaching", "cross", "guest", "nocommit", "student", "senior", "kids", "trial"],
-      "rating": 4.9, "reviews": 108, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "rating": 4.9, "reviews": 109, "rating_src": "Google Maps, relevé le 10/11/2026",
       "url": "https://fairfightcrossfit.fr/tarifs/",
       "sources": ["https://fairfightcrossfit.fr/tarifs/", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
       "official": true,
@@ -238,7 +238,7 @@
         {"n": "Coaching 45 min sans EMS", "price": 45, "unit": "seance", "inc": "Duo 35 €, trio 30 € par personne"}
       ],
       "perks": ["coaching", "small", "guest", "body"],
-      "rating": 5.0, "reviews": 423, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "rating": 5.0, "reviews": 441, "rating_src": "Google Maps, relevé le 10/11/2026",
       "url": "https://www.imotionclublehavre.com/tarifs/",
       "sources": ["https://www.imotionclublehavre.com/tarifs/", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
       "official": true,
@@ -251,7 +251,7 @@
       "fee": null, "commit": "",
       "plans": [],
       "perks": ["coaching", "trial"],
-      "rating": 5.0, "reviews": 125, "rating_src": "Iron Bodyfit (localisateur de studios, novembre 2026)",
+      "rating": 5.0, "reviews": 125, "rating_src": "Google Maps, relevé le 10/11/2026",
       "url": "https://studios.ironbodyfit.com/fr/fr/normandie/seine-maritime/le-havre/iron-bodyfit-le-havre-162",
       "sources": ["https://studios.ironbodyfit.com/fr/fr/normandie", "https://www.masalledesport.com/salle/14233,iron-bodyfit-le-havre,centre-d-electrostimulation-ems,le-havre,76600,fr"],
       "official": true,
@@ -264,7 +264,7 @@
       "fee": null, "commit": "",
       "plans": [],
       "perks": ["coaching"],
-      "rating": null, "reviews": null, "rating_src": "",
+      "rating": 4.8, "reviews": 126, "rating_src": "Google Maps, relevé le 10/11/2026",
       "url": "https://www.masalledesport.com/salle-de-sport,a,le-havre",
       "sources": ["https://www.masalledesport.com/salle-de-sport,a,le-havre"],
       "official": false,

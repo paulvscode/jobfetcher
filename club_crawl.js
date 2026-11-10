@@ -137,3 +137,49 @@ function bindCrawl(){
     catch(e){ const r = document.createRange(); r.selectNodeContents(b.nextElementSibling); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Sélectionné"; }
     setTimeout(()=>b.textContent = "Copier", 1500); });
 }
+
+// ---- competitors' reviews and search trends (club.json "market") -------------------------------
+function marketSection(K){
+  const M = K.market; if (!M) return "";
+  const pct = (a, b) => b ? `${a>=b?"+":""}${Math.round(100*(a/b-1))} %` : "—";
+  const lvl = v => v>=15 ? "--lv5" : v>=8 ? "--lv4" : v>=4 ? "--lv3" : v>=2 ? "--lv2" : "--lv1";
+  const ST2 = {proved:["ok","Atout prouvé par les avis"], verify:["warn","Atout à confirmer avec le club"], unknown:["info","Pas de donnée sur le club"]};
+  const gRows = M.gyms.map(g=>`<tr class="${g.me?"me":""}"><td>${g.url ? link(g.url, g.name) : esc(g.name)}</td>
+    <td class="n">${g.rating.toFixed(1).replace(".",",")}</td><td class="n">${fmt(g.count)}</td>
+    <td class="n"><span class="tag" style="background:var(${lvl(g.low)})">${String(g.low).replace(".",",")} %</span></td>
+    <td style="white-space:normal;min-width:220px;font-size:12px">${g.topics.map(t=>`<span class="tag">${esc(t[0])} ${t[1]}</span>`).join("")}</td>
+    <td style="white-space:normal;min-width:260px;font-size:12px">${esc(g.issues || "")}</td></tr>`).join("");
+  const theme = t => `<div class="chk">${stIcon(ST2[t.s][0])}<div style="flex:1"><b>${esc(t.t)}</b> <span class="muted" style="font-size:12px">— ${ST2[t.s][1]}</span>
+    <div style="font-size:13px;margin-top:3px"><span class="muted">Chez les concurrents :</span> ${esc(t.them)}</div>
+    <div style="font-size:13px;margin-top:3px"><span class="muted">Au club :</span> ${esc(t.us)}</div>
+    <div style="font-size:13px;margin-top:3px"><b>À écrire sur le site :</b> ${esc(t.say)}</div></div></div>`;
+  const T = M.trends, MO = ["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
+  const tRows = T.rows.map(r=>`<tr><td><b>${esc(r.kw)}</b></td>
+    <td class="n">${r.hn!=null ? String(r.hn).replace(".",",") : "—"}</td>
+    <td class="n">${r.hn!=null ? pct(r.hn, r.hn_prev) : `${r.hn_g} %`}</td>
+    <td class="n">${r.bn!=null ? pct(r.bn, r.bn_prev) : "—"}</td><td class="n">${pct(r.fr, r.fr_prev)}</td></tr>`).join("");
+  const sRows = Object.entries(T.season).map(([k, s])=>{ const mx = Math.max(...s), mn = Math.min(...s);
+    return `<tr><td class="f"><b>${esc(k)}</b></td>${s.map(v=>{ const x = (v-mn)/((mx-mn)||1); return `<td style="background:var(${x>.8?"--lv5":x>.6?"--lv4":x>.4?"--lv3":x>.2?"--lv2":"--lv1"})">${v}</td>`; }).join("")}</tr>`; }).join("");
+  return `
+  <h3>Ce que reprochent les clients des autres salles</h3>
+  <p class="muted" style="margin:0 0 8px">Avis Google Maps de ${M.gyms.length} salles du Havre et de Gonfreville, relevés le ${esc(fdate(M.checked))}, et 168 avis Trustpilot sur les chaînes. Ce que les clients reprochent ailleurs et que le club fait mieux, c'est ce qu'il faut écrire sur le site.</p>
+  <div class="card"><b>Les 7 sujets, et où en est le club</b>${M.themes.map(theme).join("")}</div>
+  <div class="tw" style="margin:10px 0"><table class="plain"><thead><tr><th>Salle</th><th class="n">Note</th><th class="n">Avis</th><th class="n">1–2 étoiles</th><th>Sujets les plus cités par Google</th><th>Reproches relevés dans les avis</th></tr></thead><tbody>${gRows}</tbody></table></div>
+  <p class="note">« 1–2 étoiles » : part des avis à 1 ou 2 étoiles. Sujets : mots que Google repère dans les avis, avec leur nombre (positifs comme négatifs). Reproches : lus dans les avis à 1–3 étoiles que Google affiche en premier (5 par salle sans compte Google).</p>
+  <div class="tw" style="margin:10px 0"><table class="plain"><thead><tr><th>Enseigne (Trustpilot, toute la France)</th><th class="n">Note</th><th class="n">Avis</th><th>Reproches principaux (sur 40 à 44 avis récents lus)</th></tr></thead>
+    <tbody>${M.brands.map(b=>`<tr><td>${esc(b.b)}</td><td class="n">${esc(b.score)}</td><td class="n">${fmt(b.n)}</td><td style="white-space:normal;min-width:280px;font-size:12px">${esc(b.main)}</td></tr>`).join("")}</tbody></table></div>
+
+  <h3>Ce que les gens cherchent (Google Trends)</h3>
+  <div class="card"><b>Évolution sur 12 mois</b> <span class="muted">— moyenne des 52 dernières semaines comparée aux 52 précédentes</span>
+   <div class="tw" style="margin:8px 0"><table class="plain"><thead><tr><th>Recherche</th><th class="n">Haute-Normandie (0–100)</th><th class="n">Évolution Haute-Normandie</th><th class="n">Basse-Normandie</th><th class="n">France</th></tr></thead><tbody>${tRows}</tbody></table></div>
+   <p class="note">0–100 : intérêt relatif au sein de la même comparaison (« salle de sport » ≈ 50 veut dire environ 2,3 fois plus de recherches qu'HYROX ≈ 22). ${esc(T.regions)}</p>
+   <p class="note">${esc(T.weak)}</p></div>
+  <div class="card"><b>Saison des recherches</b> <span class="muted">— France, moyenne par mois 2024–2026 ; plus foncé = plus de recherches</span>
+   <div class="tw" style="margin:8px 0"><table class="heat"><thead><tr><th></th>${MO.map(m=>`<th>${m}</th>`).join("")}</tr></thead><tbody>${sRows}</tbody></table></div>
+   <p class="note">HYROX : pics en octobre-novembre et avril-mai (saisons de courses), creux en juillet et janvier. Pilates et salle de sport : pic à la rentrée (septembre), plus fort qu'en janvier.</p></div>
+  <div class="card"><b>Recherches liées</b> <span class="muted">— les plus fréquentes, puis celles en forte hausse</span>
+   ${T.related.map(r=>`<div style="margin:6px 0"><b style="font-size:13px">${esc(r.k)}</b><div>${r.top.map(x=>`<span class="tag">${esc(x)}</span>`).join("")}${r.rising.map(x=>`<span class="tag" style="background:var(--lv4)">↑ ${esc(x)}</span>`).join("")}</div></div>`).join("")}</div>
+  <div class="card"><b>Pages à écrire, par ordre de priorité</b>
+   ${T.pages.map(p=>`<div class="chk"><span class="tag" style="background:var(${p.p===1?"--lv5":p.p===2?"--lv4":"--lv3"})">Priorité ${p.p}</span><div style="flex:1"><b style="font-size:13px">${esc(p.t)}</b>
+     <div class="muted" style="font-size:12px">Recherches visées : ${esc(p.kw)}</div><div style="font-size:13px">${esc(p.why)}</div></div></div>`).join("")}</div>`;
+}
