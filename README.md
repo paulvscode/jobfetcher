@@ -84,6 +84,8 @@ and as a ✓ / ! next to each gym name.
   page tree, own word count, inbound links, orphans, broken links, auto-generated descriptions.
   The dashboard turns it into the "Le site page par page" tree and the page-by-page fixes
   under "Recommandations actives" (the written recommendations are `recos` in club.json).
+  The code that draws them (`club_crawl.js`) is packed into the encrypted section too, so the
+  public page source shows neither the data nor the headings.
 - The dashboard shows it as a fourth view of the gym tab. On GitHub Pages it is encrypted
   (AES-256) with `CLUB_PASSWORD`: visitors see a password box, decryption happens in the browser.
   Put the same `CLUB_PASSWORD` in `.env` and in the repository secrets. Without it, the section
