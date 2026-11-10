@@ -81,6 +81,14 @@ GYM_TERR = [TERRITORY, "CLPE76004", "CLPE14002", "CLPE29001", "28", "FR"]
 SIZE_MIN = {"21": 50, "22": 100, "31": 200, "32": 250, "41": 500, "42": 1000, "51": 2000, "52": 5000, "53": 10000}
 
 
+def load_quality(conn):
+    """Results of validate.py (prices, company register, freshness, statistics), or None."""
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE name='data_quality'").fetchone():
+        return None
+    row = conn.execute("SELECT data FROM data_quality").fetchone()
+    return json.loads(row[0]) if row else None
+
+
 def load_club_section(conn):
     """Client file (club.json, see club.py) and the website audits (site_audit.py), or None."""
     from club import load_club
@@ -249,6 +257,7 @@ def main():
         "focus": [{"key": k, **v} for k, v in FOCUS.items()],
         "local": local,
         "gym": load_gym(conn, labels, tension),
+        "quality": load_quality(conn),
     }
     # Client section: plain on your computer, encrypted on the public site (publish.py sets CLUB_ENCRYPT=1)
     section = load_club_section(conn)
@@ -396,6 +405,7 @@ code{background:var(--soft);padding:1px 5px;border-radius:4px}
    <div class="card"><b>À surveiller</b><ul id="gWatch" style="padding-left:20px"></ul></div>
    <div class="card"><b>Autres lieux recensés</b> <span class="muted">(pas d'offre détaillée trouvée)</span><ul id="gOthers" style="padding-left:20px"></ul></div>
   </div>
+  <div class="card" style="margin-top:14px" id="gQual"></div>
   <p class="note" id="gAbout"></p>
  </div>
 
@@ -1042,6 +1052,7 @@ function renderGym(){
     document.getElementById("gCat").innerHTML = `<option value="">Tous les types</option>${CATS.map(c=>`<option>${esc(c)}</option>`).join("")}`;
     document.getElementById("gWatch").innerHTML = (GJ.watch||[]).map(w=>`<li><b>${esc(w.name)}</b> — ${esc(w.text)} <a href="${esc(w.src)}" target="_blank" rel="noopener" style="color:var(--accent)">source</a></li>`).join("");
     document.getElementById("gOthers").innerHTML = (GJ.others||[]).map(o=>`<li>${esc(o.name)} <span class="muted">· ${esc(o.cat)} · ${esc(o.address)}</span></li>`).join("");
+    renderQuality();
     document.getElementById("gAbout").innerHTML = `${esc(GJ.about)} ${(GJ.market_sources||[]).map(m=>`<a href="${esc(m.src)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(m.label)}</a>`).join(" · ")}`;
     ["gq","gCat","gSort"].forEach(id=>document.getElementById(id).addEventListener("input", renderGymTable));
     document.getElementById("gtb").onclick = e=>{
@@ -1077,7 +1088,7 @@ function renderGymTable(){
   const key = {price:g=>-(g.month ?? (g.session!=null ? 500+g.session : 1e6)), rating:g=>(g.rating??0)*1e4+(g.reviews??0), reviews:g=>g.reviews??-1, perks:g=>g.np, name:g=>0}[k];
   rows.sort((a,b)=>key(b)-key(a) || a.name.localeCompare(b.name,"fr"));
   document.getElementById("gtb").innerHTML = rows.map(g=>`<tr data-i="${g.i}">
-    <td class="l"><b>${esc(g.name)}</b><div class="muted" style="font-size:12px">${esc(g.address)}</div></td>
+    <td class="l"><b>${esc(g.name)}</b> ${qIcon(g)}<div class="muted" style="font-size:12px">${esc(g.address)}</div></td>
     <td class="l" style="min-width:140px">${esc(g.cat)}<div class="muted" style="font-size:12px">${esc(g.kind)}</div></td>
     <td class="n">${priceLabel(g)}</td><td class="l" style="min-width:150px;font-size:12px">${esc(g.commit||"—")}</td>
     <td class="n">${g.fee==null ? "—" : g.fee===0 ? "offerts" : eur(g.fee)}</td>
@@ -1097,7 +1108,44 @@ function gymDetail(g){
     ${g.notes ? `<div style="margin-top:4px">${esc(g.notes)}</div>` : ""}
     ${g.rating!=null ? `<div class="muted" style="margin-top:4px">Note : ${esc(g.rating_src)}</div>` : ""}
     <div style="margin-top:6px;font-size:12px">Sources ${g.official ? "(dont site officiel)" : "(annuaires / comparatifs)"} : ${(g.sources||[]).map((s,i)=>`<a href="${esc(s)}" target="_blank" rel="noopener" style="color:var(--accent)">${i+1}</a>`).join(" · ")}</div>
+    ${QG[g.name] ? `<div style="margin-top:8px"><b>Contrôles du ${esc(fdate(QUAL.checked))}</b>${QG[g.name].checks.map(c=>`<div class="chk">${stIcon(c.s)}<div style="font-size:12px"><b>${esc(c.l)}</b> : ${esc(c.v)}</div></div>`).join("")}
+      ${(QG[g.name].plans||[]).filter(p=>p.s!=="ok").map(p=>`<div class="muted" style="font-size:12px">${esc(p.n)} (${eur(p.price)}) : ${esc(p.v)}</div>`).join("")}</div>` : ""}
   </td></tr>`;
+}
+// ---- data quality (validate.py) ----------------------------------------------------------
+const QUAL = D.quality || null;
+const QG = Object.fromEntries(((QUAL && QUAL.gyms) || []).map(g=>[g.name, g]));
+const fdate = d => String(d||"").split("-").reverse().join("/");
+function qIcon(g){
+  const q = QG[g.name]; if (!q) return "";
+  const bad = q.checks.filter(c=>c.s==="bad"||c.s==="warn");
+  const tip = bad.length ? bad.map(c=>`${c.l} : ${c.v}`).join("\n") : "Contrôles passés : prix, registre des entreprises, fraîcheur, lien, cohérence";
+  return `<span title="${esc(tip)}" style="vertical-align:middle">${stIcon(q.s==="info" ? "ok" : q.s)}</span>`;
+}
+function renderQuality(){
+  const el = document.getElementById("gQual");
+  if (!QUAL){ el.innerHTML = `<b>Qualité des données</b><p class="muted">Pas encore de contrôle : lancez <code>python validate.py</code>.</p>`; return; }
+  const G = QUAL.gyms || [], by = l => G.map(g=>g.checks.find(c=>c.l===l)).filter(Boolean);
+  const cnt = (l, s) => by(l).filter(c=>c.s===s).length;
+  const priced = by("Prix").filter(c=>c.s!=="info" || !/non officielle|aucun prix/.test(c.v));
+  const COLS = ["Prix","Registre","Fraîcheur","Lien","Cohérence"];
+  const cell = c => c ? `<td class="l" style="font-size:12px;min-width:150px"><div style="display:flex;gap:6px;align-items:flex-start">${stIcon(c.s)}<span>${esc(c.v)}</span></div></td>` : "<td>—</td>";
+  el.innerHTML = `<div class="dh"><div><b>Qualité des données</b> <span class="muted">— contrôles automatiques du ${esc(fdate(QUAL.checked))}</span></div></div>
+   <div class="kp">
+    <div><b>${cnt("Prix","ok")} / ${priced.length}</b><span>salles dont les prix ont été retrouvés sur le site officiel (${G.length-priced.length} sans prix officiel publié)</span></div>
+    <div><b>${cnt("Registre","ok")} / ${by("Registre").length}</b><span>salles confirmées au registre des entreprises, à leur adresse</span></div>
+    <div><b>${cnt("Fraîcheur","ok")} / ${by("Fraîcheur").length}</b><span>relevés de moins de 90 jours</span></div>
+    <div><b>${(QUAL.stats||[]).filter(c=>c.s==="ok").length} / ${(QUAL.stats||[]).filter(c=>c.s!=="info").length}</b><span>contrôles des statistiques réussis</span></div>
+   </div>
+   <details><summary style="cursor:pointer"><b>Détail par salle</b> <span class="muted">(à revoir en premier)</span></summary>
+    <div class="tw" style="margin-top:8px"><table class="plain"><thead><tr><th>Salle</th>${COLS.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>
+    ${[...G].sort((a,b)=>["bad","warn","info","ok"].indexOf(a.s)-["bad","warn","info","ok"].indexOf(b.s)).map(g=>`<tr><td class="l"><b>${esc(g.name)}</b></td>${COLS.map(l=>cell(g.checks.find(c=>c.l===l))).join("")}</tr>`).join("")}
+    </tbody></table></div></details>
+   ${(QUAL.others||[]).length ? `<details style="margin-top:8px"><summary style="cursor:pointer"><b>Autres lieux recensés</b> <span class="muted">(existence au registre)</span></summary>
+     ${QUAL.others.map(o=>`<div class="chk">${stIcon(o.s)}<div style="font-size:12px"><b>${esc(o.name)}</b> : ${esc(o.checks[0].v)}</div></div>`).join("")}</details>` : ""}
+   <details style="margin-top:8px"><summary style="cursor:pointer"><b>Statistiques</b> <span class="muted">(France Travail, INSEE, Sirene, audit des sites)</span></summary>
+     ${(QUAL.stats||[]).map(c=>`<div class="chk">${stIcon(c.s)}<div style="font-size:12px"><b>${esc(c.l)}</b> : ${esc(c.v)}</div></div>`).join("")}</details>
+   <p class="note">Prix : chaque tarif relevé sur un site officiel doit encore y figurer (sinon il a probablement changé). Registre : une activité doit être immatriculée à l'adresse de la salle (base Sirene via recherche-entreprises.api.gouv.fr) ; les associations sans salarié n'ont pas toujours de numéro SIRET. Fraîcheur : relevé à refaire après 90 jours. Les prix « ≈ » viennent d'annuaires et ne sont pas vérifiables automatiquement : à confirmer par téléphone.</p>`;
 }
 function drawGymPrices(){
   const rows = GYMS.filter(g=>g.month!=null).sort((a,b)=>a.month-b.month);

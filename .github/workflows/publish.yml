@@ -39,6 +39,8 @@ jobs:
         run: python collect_territory.py
       - name: Website audit (SEO / GEO / AEO)
         run: python site_audit.py
+      - name: Data checks (prices, company register, freshness, statistics)
+        run: python validate.py
       - name: Build the site
         run: python publish.py
       - uses: actions/configure-pages@v5

@@ -52,6 +52,25 @@ Quick test: `python collect.py --limit 50 --skip-lbb`.
   Normandy and France (`python collect.py --only-sport`, under a minute).
   Both are also part of the normal monthly runs. Jobs and activity codes are listed in `sport.py`.
 
+### Data checks (`python validate.py`, about 2 minutes)
+
+Runs every month in the workflow; results appear under "Qualité des données" in the gym tab
+and as a ✓ / ! next to each gym name.
+
+- **Prices**: every price taken from an official site must still appear on that site;
+  a price that disappeared has probably changed. Prices marked `"uncertain": true`
+  (directories, blogs) cannot be checked automatically: confirm them by phone.
+- **Company register**: an active business must be registered at the gym's address
+  (Sirene, through recherche-entreprises.api.gouv.fr). Catches gyms that closed, moved,
+  or never existed. Small associations may have no SIRET.
+- **Freshness**: each gym can carry its own `"checked": "YYYY-MM-DD"` (otherwise the file's
+  date); warning after 90 days. Update it whenever you re-check a gym.
+- **Plausibility**: ratings 1–5, believable prices, known units and perks, working links.
+- **Statistics**: every territory has the latest quarter, no total jumps by more than 50 %,
+  INSEE / Sirene / site audit present and recent.
+
+`python validate.py --offline` runs only the checks that need no internet.
+
 ### Client section (one gym, encrypted on the public site)
 
 - `club.json` holds the research and action plan for one client gym (identity, offer, HYROX,

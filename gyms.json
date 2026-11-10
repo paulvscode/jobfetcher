@@ -171,7 +171,7 @@
       "url": "https://lhsportclub.fr/",
       "sources": ["https://lhsportclub.fr/abonnements/", "https://lhsportclub.fr/", "https://lhsportclub.fr/hyrox/"],
       "official": true,
-      "notes": "Club Hyrox affilié (2025) et certifié Les Mills : 5 espaces (2 studios, Cycling Connect, LH Fight Club, studio Hyrox) et plateau musculation, environ 50 cours par semaine. Bilan et séance découverte gratuits. Page des tarifs mise à jour en novembre 2024 : « autres tarifs sur rendez-vous »."
+      "notes": "Club Hyrox affilié (2025) et certifié Les Mills : 5 espaces (2 studios, Cycling Connect, LH Fight Club, studio Hyrox) et plateau musculation, environ 50 cours par semaine. Bilan et séance découverte gratuits. Page des tarifs mise à jour en novembre 2024 : « autres tarifs sur rendez-vous ». « Physic Form Le Havre » (68 bis rue du Général Sarrail), encore listé sur Ma Salle de Sport, fait partie du club."
     },
     {
       "name": "Gino Gym Le Havre", "brand": "", "kind": "Indépendant", "cat": "Fitness / musculation",
@@ -189,20 +189,7 @@
       "url": "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre",
       "sources": ["https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
       "official": false,
-      "notes": "Prix relevés par exo-sport.fr (juillet 2026) : pas de site officiel trouvé. Frais : adhésion 39,99 € + dossier 20 €. Coachs présents en salle. Même adresse que « Viv'eden » sur un annuaire (« formules à partir de 29,90 € »)."
-    },
-    {
-      "name": "Dark Fitness Le Havre", "brand": "", "kind": "Indépendant", "cat": "Fitness / musculation",
-      "address": "111 boulevard de Leningrad, 76600",
-      "hours": "7j/7 6h–22h",
-      "fee": null, "commit": "Pass annuel (1 an)",
-      "plans": [],
-      "perks": ["d7", "cours"],
-      "rating": 4.0, "reviews": 6, "rating_src": "masalledesport.com",
-      "url": "https://www.masalledesport.com/salle/9851,dark-fitness-le-havre,club-de-fitness,le-havre,76600,fr",
-      "sources": ["https://www.masalledesport.com/salle/9851,dark-fitness-le-havre,club-de-fitness,le-havre,76600,fr"],
-      "official": false,
-      "notes": "Plus de 1 000 m². Aucun prix publié."
+      "notes": "Prix relevés par exo-sport.fr (juillet 2026) : pas de site officiel trouvé. Frais : adhésion 39,99 € + dossier 20 €. Coachs présents en salle. Également listée sous son ancien nom « Viv'eden » sur Ma Salle de Sport (« formules à partir de 29,90 € »)."
     },
     {
       "name": "CrossFit L'Entrepôt", "brand": "", "kind": "Indépendant", "cat": "CrossFit / Hyrox",
@@ -297,7 +284,8 @@
       "perks": ["small", "coaching", "guest", "video", "kids"],
       "rating": 5.0, "reviews": 71, "rating_src": "Kreno Sport",
       "url": "https://www.yoga-le-havre.com/about-1",
-      "sources": ["https://www.yoga-le-havre.com/about-1", "https://www.krenosport.com/club/mauve-yoga-le-havre-9028"],
+      "sources": ["https://www.yoga-le-havre.com/about-1", "https://www.facebook.com/mauveyoga.le.havre/", "https://www.krenosport.com/club/mauve-yoga-le-havre-9028"],
+      "confirmed": "ouvert, confirmé le 10/11/2026 (page Facebook active) ; structure associative sans établissement sportif immatriculé à l'adresse",
       "official": true,
       "notes": "Yoga (Sivananda, Hatha, Yin) et Pilates en petits groupes, cours particuliers ou en duo, abonnement vidéo. Inscription via HelloAsso."
     },
@@ -356,16 +344,14 @@
     }
   ],
   "others": [
-    {"name": "Viv'eden Le Havre", "cat": "Fitness", "address": "77 rue du Maréchal Joffre, 76600", "src": "https://www.masalledesport.com/salle-de-sport,a,le-havre"},
     {"name": "Leader Club Le Havre", "cat": "Fitness", "address": "139 rue du Maréchal Joffre, 76600", "src": "https://www.masalledesport.com/salle-de-sport%2Ca%2Cle-havre?page=2"},
-    {"name": "Physic Form Le Havre", "cat": "Fitness", "address": "68 bis rue du Général Sarrail, 76600", "src": "https://www.masalledesport.com/salle-de-sport,a,le-havre"},
     {"name": "Art'Sport Café", "cat": "Fitness (30 h de cours)", "address": "8 rue Marcel Toulouzan, 76600", "src": "https://www.masalledesport.com/salle-de-sport,a,le-havre"},
     {"name": "Pep's Asso", "cat": "Fitness associatif", "address": "Boulevard Albert Ier, 76600", "src": "https://www.masalledesport.com/salle-de-sport,a,le-havre"},
-    {"name": "Corps Accord", "cat": "Hyrox / fitness", "address": "Le Havre", "src": "https://maboxdecross.fr/recherche/seine-maritime/le-havre"},
     {"name": "O'Fight Club", "cat": "Hyrox / combat", "address": "Le Havre", "src": "https://maboxdecross.fr/recherche/seine-maritime/le-havre"},
     {"name": "Les Bains des Docks", "cat": "Piscine avec activités fitness", "address": "Quai de la Réunion, 76600", "src": "https://www.masalledesport.com/salle-de-sport,a,le-havre"}
   ],
   "watch": [
+    {"name": "Dark Fitness Le Havre (fermé)", "text": "Salle de 1 000 m² au 111 boulevard de Leningrad, désormais fermée : ses adhérents se reportent sur les salles voisines. Encore listée sur Ma Salle de Sport.", "src": "https://www.masalledesport.com/salle/9851,dark-fitness-le-havre,club-de-fitness,le-havre,76600,fr"},
     {"name": "Gigafit Le Havre", "text": "Ouverture annoncée (« Gigafit débarque ! »), avec Pilates Reformer. Adresse et prix pas encore publiés.", "src": "https://www.gigafit.fr/club/le-havre"},
     {"name": "Fitness Park Gonfreville-l'Orcher", "text": "Hors de la ville mais à quelques minutes : 30 €/4 semaines avec engagement (19 € le premier mois), jusqu'à 60 € sans engagement.", "src": "https://www.fitnesspark.fr/club/le-havre/"},
     {"name": "Basic-Fit et L'Orange Bleue Gonfreville-l'Orcher", "text": "Deux autres clubs low cost juste à l'est de la ville.", "src": "https://www.masalledesport.com/salle-de-sport%2Ca%2Cle-havre?page=2"}
