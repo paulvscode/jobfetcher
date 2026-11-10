@@ -385,7 +385,7 @@ code{background:var(--soft);padding:1px 5px;border-radius:4px}
 <section id="v-gym" hidden>
  <div class="card"><div class="dh"><div><h2 style="margin:0 0 4px;font-size:18px">Salles de sport — ville du Havre</h2>
   <p class="muted" style="margin:0" id="gIntro"></p></div>
-  <div class="seg" id="gView" role="group" aria-label="Vue"><button data-v="comp" aria-pressed="true">Concurrents</button><button data-v="rank" aria-pressed="false">Classement</button><button data-v="market" aria-pressed="false">Marché</button><button data-v="club" aria-pressed="false" id="gClubBtn" hidden>Espace client</button></div></div>
+  <div class="seg" id="gView" role="group" aria-label="Vue"><button data-v="comp" aria-pressed="true">Concurrents</button><button data-v="rank" aria-pressed="false">Classement</button><button data-v="market" aria-pressed="false">Marché</button><button data-v="club" aria-pressed="false" id="gClubBtn" hidden>Focus LH Sport Club</button></div></div>
   <div class="kp" id="gKpi"></div>
   <b>Pistes pour développer une salle existante</b><ul id="gIdeas" style="margin:6px 0 0;padding-left:20px"></ul></div>
 
@@ -1067,7 +1067,7 @@ function renderGym(){
     document.getElementById("gFlowNaf").innerHTML = (G.naf||[]).map(n=>`<option value="${n.c}">${esc(n.l)}</option>`).join("");
     document.getElementById("gFlowNaf").oninput = drawGymFlow;
     const cb = document.getElementById("gClubBtn");
-    if (D.club || D.clubEnc){ cb.hidden = false; if (D.club) cb.textContent = D.club.club.name; }
+    if (D.club || D.clubEnc) cb.hidden = false;
   }
   showGymView();
 }
@@ -1297,13 +1297,13 @@ async function unlockClub(pwd){
 }
 function clubLogin(){
   const el = document.getElementById("g-club");
-  el.innerHTML = `<div class="card" style="max-width:440px;margin:14px auto"><b>Espace client</b>
+  el.innerHTML = `<div class="card" style="max-width:440px;margin:14px auto"><b>Focus LH Sport Club</b>
     <p class="muted" style="margin:6px 0 10px">Cette section est chiffrée. Saisissez le mot de passe pour l'afficher : elle est déchiffrée dans votre navigateur, rien n'est envoyé.</p>
     <form id="cForm" class="row" style="margin:0"><input type="password" id="cPwd" autocomplete="current-password" placeholder="Mot de passe" required style="flex:1" aria-label="Mot de passe">
     <button class="pin" type="submit">Ouvrir</button></form><p class="note" id="cMsg" role="status"></p></div>`;
   const go = async pwd => {
     try { CLUB = await unlockClub(pwd); try { sessionStorage.setItem("clubPwd", pwd); } catch(e) {}
-      document.getElementById("gClubBtn").textContent = CLUB.club.name; renderClub(); }
+      renderClub(); }
     catch(e) { document.getElementById("cMsg").textContent = "Mot de passe incorrect."; }
   };
   document.getElementById("cForm").onsubmit = e=>{ e.preventDefault(); go(document.getElementById("cPwd").value); };
