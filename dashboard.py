@@ -1339,8 +1339,13 @@ function seoChecks(a){
     ["speed","Temps de réponse", h.secs<=0.8 ? "ok" : h.secs<=1.5 ? "warn" : "bad", `${String(h.secs).replace(".",",")} s pour le HTML`],
   ];
   if (ps) c.push(["ps","PageSpeed mobile", ps.performance>=90 ? "ok" : ps.performance>=50 ? "warn" : "bad", `performance ${ps.performance}, SEO ${ps.seo}, accessibilité ${ps.accessibility}, LCP ${a.pagespeed.lcp}`]);
-  return c.map(([k,l,s,v])=>({k,l,s,v}));
+  const kw = h.kw || {};
+  c.push(["same","Liens vers les profils (sameAs)", L.sameAs ? "ok" : "warn", L.sameAs ? "le site relie ses profils (réseaux, annuaires) à l'établissement" : "aucun lien structuré vers les profils de l'établissement"]);
+  c.push(["qs","Intertitres en forme de question", h.questions>=3 ? "ok" : h.questions ? "warn" : "bad", `${h.questions||0} sur la page d'accueil`]);
+  c.push(["price","Prix affichés sur l'accueil", (kw["€"]||0)>0 ? "ok" : "warn", (kw["€"]||0)>0 ? `${kw["€"]} montant(s) en euros` : "aucun prix : les moteurs de réponse vont le chercher ailleurs"]);
+  return c.map(([k,l,s,v])=>({k,l,s,v,cat:CHECK_CAT[k]||"SEO"}));
 }
+const CHECK_CAT = {ai:"GEO", llms:"GEO", local:"GEO", same:"GEO", faq:"AEO", qs:"AEO", price:"AEO"};
 const seoScore = cs => cs.length ? Math.round(100*cs.reduce((t,c)=>t+(c.s==="ok"?1:c.s==="warn"?.5:0),0)/cs.length) : null;
 
 function pageIssues(a){             // the client's own site, crawled page by page
@@ -1382,15 +1387,61 @@ function renderClub(){
   const el = document.getElementById("g-club");
   if (!CLUB){ if (D.clubEnc && !document.getElementById("cForm")) clubLogin(); return; }
   const K = CLUB.club, A = CLUB.audits || {}, mine = A[K.name] || {}, pos = clubPosition();
-  const checks = seoChecks(mine), myScore = seoScore(checks);
+  const checks = seoChecks(mine);
   const engines = [...new Set((K.search||[]).map(s=>s.engine||"Moteur IA"))];
   const byEng = engines.map(e=>{ const t = (K.search||[]).filter(s=>(s.engine||"Moteur IA")===e); return {e, n:t.length, c:t.filter(s=>s.cited).length}; });
   const g = pos ? pos.me.g : GYMS.find(x=>x.name===K.gym) || {};
   const comp = Object.entries(A).map(([n,a])=>({n, cs:seoChecks(a), a})).filter(x=>x.cs.length).map(x=>({...x, sc:seoScore(x.cs)})).sort((a,b)=>b.sc-a.sc);
-  const myRank = comp.findIndex(x=>x.n===K.name)+1;
-  const COLS = [["title","Title"],["desc","Description"],["h1","H1"],["local","Fiche locale"],["faq","FAQ"],["ai","Robots IA"],["llms","llms.txt"],["alt","Alt"],["weight","Poids"],["speed","Vitesse"]];
   const ul = xs => `<ul class="pl">${xs.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
   const AREA = {SEO:"--c1", GEO:"--c3", AEO:"--c2", HYROX:"--c4", Offre:"--c6", Avis:"--c5"};
+  const row = (st, title, text) => `<div class="chk">${stIcon(st)}<div><b style="font-size:13px">${title}</b><div class="muted" style="font-size:12px">${text}</div></div></div>`;
+  const of = p => checks.filter(c=>c.cat===p), man = p => (K.manual_seo||[]).filter(m=>(m[3]||"SEO")===p);
+  const score = items => { const v = items.filter(x=>x!=="info"); return v.length ? Math.round(100*v.reduce((t,x)=>t+(x==="ok"?1:x==="warn"?.5:0),0)/v.length) : null; };
+  const tests = K.search || [];
+  const PS = {SEO: score([...of("SEO").map(c=>c.s), ...(mine.pages ? pageIssues(mine).map(r=>r[2]) : []), ...man("SEO").map(m=>m[0])]),
+              GEO: score([...of("GEO").map(c=>c.s), ...man("GEO").map(m=>m[0]), ...(K.presence||[]).map(p=>p.status)]),
+              AEO: score([...of("AEO").map(c=>c.s), ...man("AEO").map(m=>m[0]), ...tests.map(t=>t.cited ? "ok" : "bad")])};
+  const compTable = (keys, heads) => {
+    const rows = comp.map(x=>{ const by = Object.fromEntries(x.cs.map(c=>[c.k,c])); return {...x, by, sc: score(keys.map(k=>by[k] ? by[k].s : "info"))}; }).sort((a,b)=>(b.sc??-1)-(a.sc??-1));
+    return `<div class="tw" style="margin-top:8px"><table class="plain"><thead><tr><th>Site</th><th class="n">Score</th>${heads.map(h=>`<th style="text-align:center">${h}</th>`).join("")}</tr></thead><tbody>
+      ${rows.map(x=>`<tr class="${x.n===K.name?"me":""}"><td>${esc(x.n)}</td><td class="n"><b>${x.sc ?? "—"}</b></td>${keys.map(k=>`<td style="text-align:center" title="${esc(x.by[k] ? x.by[k].v : "")}">${x.by[k] ? stIcon(x.by[k].s) : "—"}</td>`).join("")}</tr>`).join("")}
+      </tbody></table></div><p class="note">✓ bon · ! à améliorer · ✗ à corriger. Survolez une case pour le détail. Les chaînes partagent un site national : leur score reflète surtout le travail de leur siège.</p>`; };
+  const intro = t => `<p class="muted" style="margin:0 0 10px">${t}</p>`;
+  const aiLink = q => `https://www.google.fr/search?q=${encodeURIComponent(q)}&hl=fr&gl=fr&udm=50`;
+  const panes = {
+   SEO: `${intro("<b>SEO</b> (référencement naturel) : être bien classé dans les résultats classiques de Google. Technique du site, contenus, pages à corriger.")}
+    <div class="two" style="margin-top:0">
+     <div class="card"><b>Page d'accueil</b>${of("SEO").map(c=>row(c.s, esc(c.l), esc(c.v))).join("")}
+      ${mine.pagespeed ? "" : `<p class="note">Vitesse réelle sur mobile (Core Web Vitals) : ajoutez une clé gratuite PAGESPEED_API_KEY pour la mesurer à chaque mise à jour.</p>`}</div>
+     <div class="card"><b>Tout le site</b> <span class="muted">(pages du plan du site)</span>
+      ${mine.pages ? pageIssues(mine).map(r=>`<div class="chk">${stIcon(r[2])}<div style="flex:1"><b style="font-size:13px">${esc(r[0])} : ${r[1]}</b>
+        ${Array.isArray(r[3]) ? (r[3].length ? `<details><summary class="muted" style="font-size:12px;cursor:pointer">voir les pages</summary><div class="muted" style="font-size:12px;word-break:break-all">${r[3].map(esc).join("<br>")}</div></details>` : "")
+          : `<div class="muted" style="font-size:12px">${esc(r[3])}</div>`}</div></div>`).join("") : '<p class="muted">Lancez <code>python site_audit.py</code>.</p>'}
+      <b style="display:block;margin-top:12px">Constats relevés à la main</b>${man("SEO").map(m=>row(m[0], esc(m[1]), esc(m[2]))).join("")}</div>
+    </div>
+    <div class="card" style="margin-top:14px"><b>Comparaison avec les sites des concurrents</b> <span class="muted">(page d'accueil, ou page du club pour les chaînes)</span>
+     ${compTable(["title","desc","h1","canon","alt","img","weight","speed"], ["Title","Description","H1","Canonique","Alt","WebP","Poids","Vitesse"])}</div>`,
+   GEO: `${intro("<b>GEO</b> (Generative Engine Optimization) : être connu et cité par les IA génératives (ChatGPT, Gemini, Perplexity, Copilot, Google Mode IA). Elles s'appuient sur des sources concordantes : fiche Google, annuaires, presse, données structurées.")}
+    <div class="kp">${byEng.map(x=>`<div><b class="${x.c?"up":"down"}">${x.c} / ${x.n}</b><span>réponses qui citent le club — ${esc(x.e)}</span></div>`).join("")}</div>
+    <div class="two" style="margin-top:0">
+     <div class="card"><b>Le site est-il lisible par les IA ?</b>${of("GEO").map(c=>row(c.s, esc(c.l), esc(c.v))).join("")}
+      <b style="display:block;margin-top:12px">Constats relevés à la main</b>${man("GEO").map(m=>row(m[0], esc(m[1]), esc(m[2]))).join("")}</div>
+     <div class="card"><b>Cohérence des informations en ligne</b> <span class="muted">(les IA croisent ces sources)</span>
+      ${(K.presence||[]).map(p=>row(p.status, link(p.url, p.src), esc(p.note))).join("")}</div>
+    </div>
+    <div class="card" style="margin-top:14px"><b>Comparaison avec les concurrents</b>${compTable(["ai","llms","local","same"], ["Robots IA","llms.txt","Fiche locale","Liens profils"])}</div>`,
+   AEO: `${intro("<b>AEO</b> (Answer Engine Optimization) : être <i>la</i> réponse aux questions précises (« combien coûte… », « où s'entraîner pour HYROX… ») dans les réponses IA de Google, les extraits en vedette et la recherche vocale. Il faut des réponses courtes, factuelles et balisées sur le site.")}
+    <div class="two" style="margin-top:0">
+     <div class="card"><b>Le site répond-il aux questions ?</b>${of("AEO").map(c=>row(c.s, esc(c.l), esc(c.v))).join("")}
+      <b style="display:block;margin-top:12px">Constats relevés à la main</b>${man("AEO").map(m=>row(m[0], esc(m[1]), esc(m[2]))).join("")}</div>
+     <div class="card"><b>Comparaison avec les concurrents</b>${compTable(["faq","qs","price"], ["FAQ balisée","Questions","Prix"])}</div>
+    </div>
+    <div class="card" style="margin-top:14px"><b>Questions testées</b> <span class="muted">— « Tester » ouvre Google Mode IA en français, localisé en France (et selon votre position)</span>
+     <div class="tw" style="margin-top:8px"><table class="plain"><thead><tr><th>Question</th><th>Moteur</th><th>Cité</th><th>Réponse</th><th>Sources renvoyées</th><th></th></tr></thead><tbody>
+      ${tests.map(t=>`<tr><td class="l">« ${esc(t.q)} »<div class="muted" style="font-size:11px">${esc(fdate(t.date))}</div></td><td class="l" style="font-size:12px;min-width:110px">${esc(t.engine||"Moteur IA")}</td><td>${stIcon(t.cited ? "ok" : "bad")}</td>
+        <td class="l" style="font-size:12px">${esc(t.who)}</td><td class="l" style="font-size:12px;min-width:200px">${esc(t.links||"")}</td><td>${link(aiLink(t.q), "Tester")}</td></tr>`).join("")}</tbody></table></div>
+     <p class="note">${esc(K.search_note)}</p></div>`
+  };
   el.innerHTML = `
   <div class="card" style="margin-top:14px"><div class="dh"><div><h2 style="margin:0 0 4px;font-size:18px">${esc(K.name)} — diagnostic</h2>
     <p class="muted" style="margin:0">Relevé du ${esc(K.checked.split("-").reverse().join("/"))} · audit technique du ${esc((mine.checked||"").split("-").reverse().join("/"))} · ${link(K.site, K.site.replace(/^https?:\/\//,"").replace(/\/$/,""))}</p></div></div>
@@ -1399,7 +1450,7 @@ function renderClub(){
     ${pos ? `<div><b>${pos.rank}<span style="font-size:13px;display:inline"> / ${pos.n}</span></b><span>au classement général (score ${Math.round(pos.me.score)}/100)</span></div>` : ""}
     <div><b>${g.rating!=null ? g.rating.toFixed(1).replace(".",",")+" ★" : "—"}</b><span>${fmt(g.reviews)} avis Google${pos ? `, ${pos.revRank}ᵉ en nombre d'avis sur ${pos.nRated}` : ""}</span></div>
     <div><b>${g.month!=null ? Math.round(g.month)+" €" : "—"}</b><span>prix d'entrée par mois (médiane du type : ${pos && pos.catMed!=null ? Math.round(pos.catMed)+" €" : "—"})</span></div>
-    <div><b class="${myScore<60?"down":""}">${myScore ?? "—"} %</b><span>score SEO technique, ${myRank ? myRank+"ᵉ sur "+comp.length+" sites" : ""}</span></div>
+    <div><b style="font-size:15px">${["SEO","GEO","AEO"].map(p=>`<span class="${PS[p]<60?"down":""}" style="display:block">${PS[p] ?? "—"} % <span class="muted" style="font-size:11px;font-weight:400">${p}</span></span>`).join("")}</b><span>scores de visibilité (détail plus bas)</span></div>
     <div><b style="font-size:15px">${byEng.map(x=>`<span class="${x.c ? "up" : "down"}" style="display:block">${x.c} / ${x.n} <span class="muted" style="font-size:11px;font-weight:400">${esc(x.e.replace(/ \(.*\)/,""))}</span></span>`).join("")}</b>
      <span>réponses IA testées qui citent le club</span></div>
    </div></div>
@@ -1435,43 +1486,25 @@ function renderClub(){
      <div><span class="up" style="font-size:13px">Points forts</span>${ul(K.reviews.pos||[])}</div><div><span class="down" style="font-size:13px">Points de vigilance</span>${ul(K.reviews.neg||[])}</div></div></div>
   </div>
 
-  <h3>SEO technique — le site du club</h3>
-  <div class="two" style="margin-top:0">
-   <div class="card"><b>Page d'accueil</b> <span class="muted">(${myScore ?? "—"} %)</span>
-    ${checks.map(c=>`<div class="chk">${stIcon(c.s)}<div><b style="font-size:13px">${esc(c.l)}</b><div class="muted" style="font-size:12px">${esc(c.v)}</div></div></div>`).join("")}
-    ${mine.pagespeed ? "" : `<p class="note">Vitesse réelle sur mobile (Core Web Vitals) : ajoutez une clé gratuite PAGESPEED_API_KEY pour la mesurer à chaque mise à jour.</p>`}</div>
-   <div class="card"><b>Tout le site</b> <span class="muted">(pages du plan du site)</span>
-    ${mine.pages ? pageIssues(mine).map(r=>`<div class="chk">${stIcon(r[2])}<div style="flex:1"><b style="font-size:13px">${esc(r[0])} : ${r[1]}</b>
-      ${Array.isArray(r[3]) ? (r[3].length ? `<details><summary class="muted" style="font-size:12px;cursor:pointer">voir les pages</summary><div class="muted" style="font-size:12px;word-break:break-all">${r[3].map(esc).join("<br>")}</div></details>` : "")
-        : `<div class="muted" style="font-size:12px">${esc(r[3])}</div>`}</div></div>`).join("") : '<p class="muted">Lancez <code>python site_audit.py</code>.</p>'}
-    <b style="display:block;margin-top:12px">Constats relevés à la main</b>
-    ${(K.manual_seo||[]).map(m=>`<div class="chk">${stIcon(m[0])}<div><b style="font-size:13px">${esc(m[1])}</b><div class="muted" style="font-size:12px">${esc(m[2])}</div></div></div>`).join("")}</div>
-  </div>
-
-  <div class="card" style="margin-top:14px"><b>Comparaison avec les sites des concurrents</b> <span class="muted">(page d'accueil ou page du club pour les chaînes)</span>
-   <div class="tw" style="margin-top:8px"><table class="plain"><thead><tr><th>Site</th><th class="n">Score</th>${COLS.map(c=>`<th style="text-align:center">${c[1]}</th>`).join("")}</tr></thead><tbody>
-    ${comp.map(x=>{ const by = Object.fromEntries(x.cs.map(c=>[c.k,c])); return `<tr class="${x.n===K.name?"me":""}"><td>${esc(x.n)}</td><td class="n"><b>${x.sc}</b></td>
-      ${COLS.map(c=>`<td style="text-align:center" title="${esc(by[c[0]] ? by[c[0]].v : "")}">${by[c[0]] ? stIcon(by[c[0]].s) : "—"}</td>`).join("")}</tr>`; }).join("")}
-   </tbody></table></div>
-   <p class="note">✓ bon · ! à améliorer · ✗ à corriger. Survolez une case pour le détail. Les chaînes partagent un site national : leur score reflète surtout le travail de leur siège.</p></div>
-
-  <h3>GEO et AEO — visibilité dans les moteurs de réponse et les assistants IA</h3>
-  <div class="two" style="margin-top:0">
-   <div class="card"><b>Le club est-il cité ?</b><div class="tw" style="margin-top:8px"><table class="plain"><thead><tr><th>Question posée</th><th>Moteur</th><th>Cité</th><th>Réponse</th></tr></thead><tbody>
-    ${(K.search||[]).map(s=>`<tr><td class="l">« ${esc(s.q)} »</td><td class="l" style="font-size:12px;min-width:110px">${esc(s.engine||"Moteur IA")}</td><td>${stIcon(s.cited ? "ok" : "bad")}</td><td class="l" style="font-size:12px">${esc(s.who)}</td></tr>`).join("")}</tbody></table></div>
-    <p class="note">${esc(K.search_note)}</p></div>
-   <div class="card"><b>Cohérence des informations en ligne</b> <span class="muted">(les IA croisent ces sources)</span>
-    ${(K.presence||[]).map(p=>`<div class="chk">${stIcon(p.status)}<div><b style="font-size:13px">${link(p.url, p.src)}</b><div class="muted" style="font-size:12px">${esc(p.note)}</div></div></div>`).join("")}</div>
-  </div>
+  <h3>Visibilité en ligne</h3>
+  <div class="seg" id="cPane" role="group" aria-label="Volet" style="margin-bottom:10px">${["SEO","GEO","AEO"].map(p=>`<button data-p="${p}" aria-pressed="${p===cPane}">${p} · ${PS[p] ?? "—"} %</button>`).join("")}</div>
+  ${["SEO","GEO","AEO"].map(p=>`<div class="cpane" data-p="${p}" ${p===cPane ? "" : "hidden"}>${panes[p]}</div>`).join("")}
 
   <h3>Plan d'action</h3>
   <div class="tw"><table class="plain"><thead><tr><th class="n">Priorité</th><th>Domaine</th><th>Action</th><th>Pourquoi</th><th>Comment</th><th>Effort</th></tr></thead><tbody>
    ${(K.actions||[]).sort((a,b)=>a.p-b.p).map(x=>`<tr><td class="n"><b>${x.p}</b></td><td><span class="tag" style="background:color-mix(in srgb, var(${AREA[x.area]||"--c6"}) 22%, transparent)">${esc(x.area)}</span></td>
      <td class="l" style="min-width:180px"><b>${esc(x.t)}</b></td><td class="l" style="font-size:12px">${esc(x.why)}</td><td class="l" style="font-size:12px;min-width:280px">${esc(x.how)}</td><td class="l" style="font-size:12px;min-width:90px">${esc(x.effort)}</td></tr>`).join("")}
   </tbody></table></div>
-  <p class="note">Priorité 1 = ce mois-ci, 2 = ce trimestre, 3 = dans les six mois. L'audit technique se met à jour à chaque collecte mensuelle ; le reste de la section (fichier club.json) est un relevé daté à refaire chaque trimestre.</p>`;
+  <p class="note">Priorité 1 = ce mois-ci, 2 = ce trimestre, 3 = dans les six mois. L'audit technique se met à jour à chaque collecte hebdomadaire ; le reste de la section (fichier club.json) est un relevé daté à refaire chaque trimestre.</p>
+
+  ${(K.methods||[]).length ? `<div class="card" style="margin-top:14px"><b>Méthode : comment chaque test a été fait</b>
+   ${K.methods.map(m=>`<details style="margin-top:8px"><summary style="cursor:pointer"><b style="font-size:13px">${esc(m.t)}</b></summary>${ul(m.items)}</details>`).join("")}</div>` : ""}`;
+  document.getElementById("cPane").onclick = e=>{ const btn = e.target.closest("button"); if (!btn) return; cPane = btn.dataset.p;
+    document.querySelectorAll("#cPane button").forEach(x=>x.setAttribute("aria-pressed", x===btn));
+    document.querySelectorAll(".cpane").forEach(d=>d.hidden = d.dataset.p!==cPane); };
   drawClubChart();
 }
+let cPane = "SEO";
 function drawClubChart(){
   if (!CLUB || !document.getElementById("cBub")) return;
   const me = CLUB.club.gym, pts = GYMS.filter(g=>(g.cat==="Fitness / musculation" || g.cat==="Low cost") && g.month!=null && g.rating!=null);
