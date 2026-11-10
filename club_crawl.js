@@ -123,10 +123,11 @@ function crawlSection(K, cr, a){
   <h3 data-nav="Recommandations">Recommandations actives</h3>
   <p class="muted" style="margin:0 0 8px">Tirées de la lecture des ${ok.length} pages. SEO, GEO et AEO : quoi faire sur le site, avec le texte ou le code prêt à coller. « Avis et tendances » et « Marketing » : ce qui se passe hors du site. En dessous, les correctifs page par page sont recalculés à chaque collecte : une ligne passe au vert quand c'est corrigé.</p>
   ${pitfallsCard(K)}
-  <div class="seg" id="rPane" role="group" aria-label="Volet des recommandations" style="margin-bottom:10px;flex-wrap:wrap">${["SEO","GEO","AEO"].map(p=>`<button data-p="${p}" aria-pressed="${p===rPane}">${p} · ${recos.filter(r=>r.cat===p).length}</button>`).join("")}${K.market ? `<button data-p="AVIS" aria-pressed="${rPane==="AVIS"}">Avis et tendances</button>` : ""}${K.playbook ? `<button data-p="MKT" aria-pressed="${rPane==="MKT"}">Marketing : ce que font les meilleurs</button>` : ""}${K.bing ? `<button data-p="BING" aria-pressed="${rPane==="BING"}">Bing Webmaster Tools</button>` : ""}</div>
+  <div class="seg" id="rPane" role="group" aria-label="Volet des recommandations" style="margin-bottom:10px;flex-wrap:wrap">${["SEO","GEO","AEO"].map(p=>`<button data-p="${p}" aria-pressed="${p===rPane}">${p} · ${recos.filter(r=>r.cat===p).length}</button>`).join("")}${K.market ? `<button data-p="AVIS" aria-pressed="${rPane==="AVIS"}">Avis et tendances</button>` : ""}${K.playbook ? `<button data-p="MKT" aria-pressed="${rPane==="MKT"}">Marketing : ce que font les meilleurs</button>` : ""}${K.bing ? `<button data-p="BING" aria-pressed="${rPane==="BING"}">Bing Webmaster Tools</button>` : ""}${K.facebook ? `<button data-p="FB" aria-pressed="${rPane==="FB"}">Facebook : les 50 ans et plus</button>` : ""}</div>
   ${K.market ? `<div class="rpane" data-p="AVIS" data-nav="Avis et tendances" ${rPane==="AVIS" ? "" : "hidden"}>${marketSection(K)}</div>` : ""}
   ${K.playbook ? `<div class="rpane" data-p="MKT" data-nav="Marketing" ${rPane==="MKT" ? "" : "hidden"}>${playbookSection(K)}</div>` : ""}
   ${K.bing ? `<div class="rpane" data-p="BING" data-nav="Bing Webmaster" ${rPane==="BING" ? "" : "hidden"}>${bingSection(K)}</div>` : ""}
+  ${K.facebook ? `<div class="rpane" data-p="FB" data-nav="Facebook 50+" ${rPane==="FB" ? "" : "hidden"}>${facebookSection(K)}</div>` : ""}
   ${["SEO","GEO","AEO"].map(p=>`<div class="rpane" data-p="${p}" ${p===rPane ? "" : "hidden"}>
     ${recos.filter(r=>r.cat===p).sort((x,y)=>x.p-y.p).map(card).join("")}
     <div class="card"><b>Correctifs page par page — ${p}</b> <span class="muted">(${nFix(p)} point${nFix(p)>1?"s":""} à traiter, mis à jour à chaque collecte)</span>${fixRows(p)}</div></div>`).join("")}
@@ -250,7 +251,7 @@ function pitfallsCard(K){
 
 // ---- questionnaire: who is answering + up to 5 questions; answers stay in this browser (localStorage) ----
 const SV_KEY = "lhsc_questionnaire_v1";
-const SV_SRC = ["Google ou Google Maps", "Instagram ou Facebook", "Un ami, un proche, un collègue", "ChatGPT ou une autre IA", "En passant devant", "Mon entreprise ou un comité d'entreprise", "Une compétition HYROX"];
+const SV_SRC = ["Google ou Google Maps", "Facebook", "Instagram", "Un ami, un proche, un collègue", "ChatGPT ou une autre IA", "En passant devant", "Mon entreprise ou un comité d'entreprise", "Une compétition HYROX"];
 const SV = {
   who: [["adh","Adhérent actuel"],["ex","Ancien adhérent"],["pros","Pas encore adhérent"]],
   q: {
@@ -400,4 +401,25 @@ function bindSurvey(){
     svView = who; svResults(); say("Merci, réponse enregistrée ✓", true);
   };
   svResults();
+}
+
+// ---- Facebook for the 50+ audience (club.json "facebook") -------------------------------------
+function facebookSection(K){
+  const F = K.facebook; if (!F) return "";
+  const pcol = p => p===1?"--lv5":p===2?"--lv4":"--lv3";
+  return `
+  <h3 style="margin-top:4px">Facebook : toucher les 50 ans et plus</h3>
+  <p class="muted" style="margin:0 0 8px">Mis à jour le ${esc(fdate(F.checked))}. ${esc(F.intro)}</p>
+  <div class="card"><b>Les chiffres</b>
+   ${F.facts.map(([t,d])=>`<div class="chk"><div><b style="font-size:13px">${esc(t)}</b><div style="font-size:13px">${esc(d)}</div></div></div>`).join("")}</div>
+  <div class="card" style="margin-top:10px"><b>Que faire, par ordre de priorité</b>
+   ${F.actions.map(a=>`<div class="chk"><span class="tag" style="background:var(${pcol(a.p)})">Priorité ${a.p}</span><div style="flex:1"><b style="font-size:13px">${esc(a.t)}</b>
+     <div class="muted" style="font-size:12px">Coût : ${esc(a.cost)} · Temps : ${esc(a.time)}</div>
+     <div style="font-size:13px;margin-top:2px">${esc(a.why)}</div>
+     <ol class="pl" style="font-size:13px">${a.steps.map(x=>`<li>${esc(x)}</li>`).join("")}</ol></div></div>`).join("")}</div>
+  <div class="card" style="margin-top:10px"><b>À éviter</b>
+   ${F.avoid.map(([t,d])=>`<div class="chk"><div><b style="font-size:13px">${esc(t)}</b><div style="font-size:13px">${esc(d)}</div></div></div>`).join("")}</div>
+  <div class="card" style="margin-top:10px"><b>Comment savoir si ça marche</b>
+   <ul class="pl" style="font-size:13px">${F.measure.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+   <div class="muted" style="font-size:12px;margin-top:4px">Sources : ${F.sources.map(([t,u])=>link(u, t)).join(" · ")}</div></div>`;
 }
