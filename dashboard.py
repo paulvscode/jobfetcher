@@ -313,6 +313,7 @@ h1{font-size:22px;margin:0}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--card);padding:2px}
 .seg button{border:none;background:none;color:var(--muted);font:inherit;font-size:13px;padding:5px 12px;border-radius:999px;cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--soft);color:var(--ink);font-weight:600}
+#rPane,#cPane{display:flex;flex-wrap:wrap;border-radius:14px;gap:2px;max-width:100%}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 body,.card,.tw,input,select,.chip,.pin{transition:background-color .2s,border-color .2s,color .2s}
 .sub{color:var(--muted);font-size:13px;margin-top:2px}
@@ -326,7 +327,7 @@ nav button.on{background:var(--accent);border-color:var(--accent);color:var(--on
 .theme h3{font-size:14px;margin:0 0 6px}.big{font-size:22px;font-weight:650;font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}.up{color:var(--up)}.down{color:var(--down)}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
-input,select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+input,select{max-width:100%;font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
 input[type=search]{flex:1;min-width:180px}
 .tw{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}
 table{border-collapse:collapse;width:100%}th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
@@ -338,7 +339,7 @@ tbody tr{cursor:pointer}tbody tr:hover{background:var(--soft)}tr.sel{background:
 .dh h2{font-size:18px;margin:0}.kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
 .kp div{background:var(--soft);border-radius:10px;padding:10px}.kp b{display:block;font-size:19px;font-variant-numeric:tabular-nums}.kp span{font-size:12px;color:var(--muted)}
 .cw{position:relative;height:280px}
-.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-top:14px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:14px;margin-top:14px}
 .heat td{text-align:center;font-variant-numeric:tabular-nums;padding:5px 7px}.heat td.f{text-align:left}
 .lv1{background:var(--lv1)}.lv2{background:var(--lv2)}.lv3{background:var(--lv3)}.lv4{background:var(--lv4)}.lv5{background:var(--lv5)}
 code{background:var(--soft);padding:1px 5px;border-radius:4px}
@@ -363,7 +364,8 @@ code{background:var(--soft);padding:1px 5px;border-radius:4px}
 nav#tabs button.clubtab{background:#e30613;border-color:#e30613;color:#fff;font-weight:600}
 nav#tabs button.clubtab:hover{background:#c00510}
 nav#tabs button.clubtab.on{background:#000;border-color:#000;color:#fff;box-shadow:inset 0 -3px 0 #e30613}
-#clubNav{position:sticky;top:0;z-index:20;display:flex;flex-wrap:nowrap;gap:4px;align-items:center;overflow-x:auto;white-space:nowrap;background:#000;border-radius:12px;padding:6px 8px;margin:0 0 12px;scrollbar-width:thin}
+#clubNav{position:sticky;top:0;z-index:20;display:flex;flex-wrap:nowrap;gap:4px;align-items:center;overflow-x:auto;white-space:nowrap;background:#000;border-radius:12px;padding:6px 8px;margin:0 0 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+#clubNav::-webkit-scrollbar{display:none}
 #clubNav .cn-t{color:#fff;font-weight:700;padding:4px 10px 4px 4px;border-right:2px solid #e30613;margin-right:4px}
 #clubNav a{color:#fff;text-decoration:none;font-size:13px;padding:5px 10px;border-radius:999px;flex:none}
 #clubNav a:hover,#clubNav a.on{background:#e30613;color:#fff}
@@ -1566,19 +1568,29 @@ function buildClubNav(el){
   const nav = document.createElement("nav");
   nav.id = "clubNav"; nav.setAttribute("aria-label", "Sections du focus LH Sport Club");
   nav.innerHTML = `<span class="cn-t">LH Sport Club</span>` + items.map((x, i)=>`<a href="#cn-${i}" data-i="${i}">${esc(x.dataset.nav)}</a>`).join("");
-  el.prepend(nav);
+  el.prepend(nav); cnCur = null;
   nav.onclick = e=>{ const a = e.target.closest("a"); if (!a) return; e.preventDefault();
     const t = items[+a.dataset.i];
     if (t.classList.contains("rpane")){ const b = document.querySelector(`#rPane button[data-p="${t.dataset.p}"]`); if (b) b.click(); }
     t.scrollIntoView({behavior:"smooth", block:"start"}); };
 }
-addEventListener("scroll", ()=>{          // highlight the section being read
-  const nav = document.getElementById("clubNav"); if (!nav || !nav.offsetParent) return;
-  let cur = null;
-  nav.querySelectorAll("a").forEach(a=>{ const t = document.getElementById("cn-"+a.dataset.i);
-    if (t && t.offsetParent && t.getBoundingClientRect().top < 120) cur = a; });
-  nav.querySelectorAll("a").forEach(a=>a.classList.toggle("on", a===cur));
-  if (cur) cur.scrollIntoView({block:"nearest", inline:"nearest"});
+// Highlight the section being read: at most once per frame, and only the menu scrolls sideways
+// (never the page, which made the page stutter on phones).
+let cnTick = false, cnCur = null;
+addEventListener("scroll", ()=>{
+  if (cnTick) return; cnTick = true;
+  requestAnimationFrame(()=>{ cnTick = false;
+    const nav = document.getElementById("clubNav"); if (!nav || !nav.offsetParent) return;
+    let cur = null;
+    for (const a of nav.querySelectorAll("a")){ const t = document.getElementById("cn-"+a.dataset.i);
+      if (t && t.offsetParent && t.getBoundingClientRect().top < 120) cur = a; }
+    if (cur===cnCur) return;
+    if (cnCur) cnCur.classList.remove("on");
+    cnCur = cur;
+    if (cur){ cur.classList.add("on");
+      const left = cur.offsetLeft - (nav.clientWidth - cur.offsetWidth) / 2;
+      nav.scrollTo({left: Math.max(0, left), behavior: "smooth"}); }
+  });
 }, {passive:true});
 let cPane = "SEO";
 function drawClubChart(){
