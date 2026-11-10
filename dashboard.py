@@ -368,13 +368,34 @@ nav#tabs button.clubtab.on{background:#000;border-color:#000;color:#fff;box-shad
 #clubNav a{color:#fff;text-decoration:none;font-size:13px;padding:5px 10px;border-radius:999px;flex:none}
 #clubNav a:hover,#clubNav a.on{background:#e30613;color:#fff}
 #g-club [data-nav]{scroll-margin-top:64px}
+#homeBtn{margin:0 0 8px}
+#home{max-width:1200px;margin:0 auto;padding:12px 16px 60px}
+.homegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.homecard{display:flex;flex-direction:column;gap:8px;padding:28px 24px;border-radius:16px;border:1px solid var(--line);background:var(--card);color:var(--ink);text-decoration:none;box-shadow:var(--shadow);min-height:150px}
+.homecard b{font-size:22px}.homecard span{color:var(--muted);font-size:14px}
+.homecard:hover{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.homecard.club{background:#000;border-color:#e30613;color:#fff;border-left:8px solid #e30613}
+.homecard.club span{color:#ddd}.homecard.club:hover{box-shadow:0 0 0 2px #e30613}
+body[data-mode="home"] main{display:none}
+body[data-mode="jobs"] #tabs .clubtab{display:none}
+body[data-mode="club"] #tabs,body[data-mode="club"] #sub,body[data-mode="club"] #ftNote,body[data-mode="home"] #sub{display:none}
+body[data-mode="club"] #pageTitle{color:#e30613}
 .paste{position:relative;margin-top:8px}.paste pre{background:var(--soft);border-radius:8px;padding:10px;max-height:320px;overflow:auto;font-size:12px;white-space:pre-wrap;word-break:break-word;margin:4px 0 0}
 .paste .pin{position:absolute;right:6px;top:22px;font-size:12px;padding:2px 8px}
 @media (max-width:600px){.spark{width:70px}td.l{min-width:160px}}
 </style></head><body>
-<header><div><h1>Tendances de l'emploi — Le Havre</h1><div class="sub" id="sub"></div></div>
+<header><div><button class="pin" id="homeBtn" type="button" hidden>← Accueil</button><h1 id="pageTitle">Tendances de l'emploi — Le Havre</h1><div class="sub" id="sub"></div></div>
 <div class="seg" id="themeSeg" role="group" aria-label="Thème d'affichage">
 <button data-mode="auto" aria-pressed="false">Auto</button><button data-mode="light" aria-pressed="false">Clair</button><button data-mode="dark" aria-pressed="false">Sombre</button></div></header>
+<section id="home" hidden>
+ <p class="muted" style="margin:0 0 14px">Choisissez un tableau de bord.</p>
+ <div class="homegrid">
+  <a class="homecard" href="#emploi" id="homeJobs"><b>Tendances de l'emploi Le Havre</b>
+   <span>Métiers, secteurs, offre locale, salles de sport : les données publiques du marché du travail et des entreprises, mises à jour chaque semaine.</span></a>
+  <a class="homecard club" href="#club" id="homeClub" hidden><b>LH Sport Club</b>
+   <span>Espace client protégé par mot de passe : diagnostic, site, avis, recommandations et plan d'action.</span></a>
+ </div>
+</section>
 <main>
 <nav id="tabs"><button data-t="themes" class="on">Thèmes</button><button data-t="jobs">Métiers</button><button data-t="sectors">Secteurs d'activité</button><button data-t="local">Offre locale</button><button data-t="gym">Salles de sport</button></nav>
 
@@ -485,7 +506,7 @@ nav#tabs button.clubtab.on{background:#000;border-color:#000;color:#fff;box-shad
 </section>
 
 <section id="detail" class="card" hidden></section>
-<p class="note">Source : France Travail — API Marché du travail et La Bonne Boîte. Chiffres par métier arrondis à la dizaine (secret statistique) :
+<p class="note" id="ftNote">Source : France Travail — API Marché du travail et La Bonne Boîte. Chiffres par métier arrondis à la dizaine (secret statistique) :
 les petits volumes sont approximatifs. « Offres » = offres déposées (France Travail + partenaires). « Demandeurs » = demandeurs d'emploi actifs (catégories A, B, C) en fin de trimestre.</p>
 </main>
 <script>
@@ -1601,11 +1622,31 @@ document.getElementById("themeSeg").onclick = e=>{ const b=e.target.closest("but
 document.querySelector(`#themeSeg button[data-mode="${document.documentElement.dataset.theme || "auto"}"]`).setAttribute("aria-pressed", "true");
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ()=>{ if (!document.documentElement.dataset.theme) recolorCharts(); });
 
-// Open the tech theme by default; #jobs, #sectors or #focus:<key> opens a tab directly
+// Three screens: home (two buttons), the job dashboard (#emploi or any tab name) and the client
+// space (#club, password-protected). The hash picks the screen, so links and the back button work.
 document.querySelector('.theme[data-i="0"]').click();
-const hashTab = document.querySelector(`#tabs button[data-t="${decodeURIComponent(location.hash.slice(1))}"]`);
-if (hashTab) hashTab.click();
-tabs.addEventListener("click", e=>{ const b=e.target.closest("button"); if (b) history.replaceState(null, "", "#"+b.dataset.t); });
+const HAS_CLUB = !!(D.club || D.clubEnc);
+document.getElementById("homeClub").hidden = !HAS_CLUB;
+function route(){
+  const h = decodeURIComponent(location.hash.slice(1));
+  let mode = h==="club" && HAS_CLUB ? "club" : (!h || h==="accueil") && HAS_CLUB ? "home" : "jobs";
+  document.body.dataset.mode = mode;
+  document.getElementById("home").hidden = mode!=="home";
+  document.getElementById("homeBtn").hidden = mode==="home" || !HAS_CLUB;
+  document.getElementById("pageTitle").textContent = mode==="club" ? "LH Sport Club" : mode==="home" ? "Le Havre — tableaux de bord" : "Tendances de l'emploi — Le Havre";
+  document.title = mode==="club" ? "LH Sport Club" : "Tendances emploi Le Havre";
+  if (mode==="club") document.querySelector('#tabs button[data-t="club"]').click();
+  else if (mode==="jobs"){
+    const b = document.querySelector(`#tabs button[data-t="${h}"]`) ||
+      (view==="club" ? document.querySelector('#tabs button[data-t="themes"]') : null);
+    if (b) b.click();
+  }
+  scrollTo(0, 0);
+}
+addEventListener("hashchange", route);
+route();
+document.getElementById("homeBtn").onclick = ()=>{ location.hash = "accueil"; };
+tabs.addEventListener("click", e=>{ const b=e.target.closest("button"); if (b && document.body.dataset.mode==="jobs") history.replaceState(null, "", "#"+b.dataset.t); });
 </script></body></html>
 """
 
