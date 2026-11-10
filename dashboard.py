@@ -1383,7 +1383,8 @@ function renderClub(){
   if (!CLUB){ if (D.clubEnc && !document.getElementById("cForm")) clubLogin(); return; }
   const K = CLUB.club, A = CLUB.audits || {}, mine = A[K.name] || {}, pos = clubPosition();
   const checks = seoChecks(mine), myScore = seoScore(checks);
-  const cited = (K.search||[]).filter(s=>s.cited).length;
+  const engines = [...new Set((K.search||[]).map(s=>s.engine||"Moteur IA"))];
+  const byEng = engines.map(e=>{ const t = (K.search||[]).filter(s=>(s.engine||"Moteur IA")===e); return {e, n:t.length, c:t.filter(s=>s.cited).length}; });
   const g = pos ? pos.me.g : GYMS.find(x=>x.name===K.gym) || {};
   const comp = Object.entries(A).map(([n,a])=>({n, cs:seoChecks(a), a})).filter(x=>x.cs.length).map(x=>({...x, sc:seoScore(x.cs)})).sort((a,b)=>b.sc-a.sc);
   const myRank = comp.findIndex(x=>x.n===K.name)+1;
@@ -1399,7 +1400,8 @@ function renderClub(){
     <div><b>${g.rating!=null ? g.rating.toFixed(1).replace(".",",")+" ★" : "—"}</b><span>${fmt(g.reviews)} avis Google${pos ? `, ${pos.revRank}ᵉ en nombre d'avis sur ${pos.nRated}` : ""}</span></div>
     <div><b>${g.month!=null ? Math.round(g.month)+" €" : "—"}</b><span>prix d'entrée par mois (médiane du type : ${pos && pos.catMed!=null ? Math.round(pos.catMed)+" €" : "—"})</span></div>
     <div><b class="${myScore<60?"down":""}">${myScore ?? "—"} %</b><span>score SEO technique, ${myRank ? myRank+"ᵉ sur "+comp.length+" sites" : ""}</span></div>
-    <div><b class="${cited ? "" : "down"}">${cited} / ${(K.search||[]).length}</b><span>réponses IA testées qui citent le club</span></div>
+    <div><b style="font-size:15px">${byEng.map(x=>`<span class="${x.c ? "up" : "down"}" style="display:block">${x.c} / ${x.n} <span class="muted" style="font-size:11px;font-weight:400">${esc(x.e.replace(/ \(.*\)/,""))}</span></span>`).join("")}</b>
+     <span>réponses IA testées qui citent le club</span></div>
    </div></div>
 
   <div class="two">
@@ -1455,8 +1457,8 @@ function renderClub(){
 
   <h3>GEO et AEO — visibilité dans les moteurs de réponse et les assistants IA</h3>
   <div class="two" style="margin-top:0">
-   <div class="card"><b>Le club est-il cité ?</b><div class="tw" style="margin-top:8px"><table class="plain"><thead><tr><th>Question posée</th><th>Cité</th><th>Qui est cité à la place</th></tr></thead><tbody>
-    ${(K.search||[]).map(s=>`<tr><td class="l">« ${esc(s.q)} »</td><td>${stIcon(s.cited ? "ok" : "bad")}</td><td class="l" style="font-size:12px">${esc(s.who)}</td></tr>`).join("")}</tbody></table></div>
+   <div class="card"><b>Le club est-il cité ?</b><div class="tw" style="margin-top:8px"><table class="plain"><thead><tr><th>Question posée</th><th>Moteur</th><th>Cité</th><th>Réponse</th></tr></thead><tbody>
+    ${(K.search||[]).map(s=>`<tr><td class="l">« ${esc(s.q)} »</td><td class="l" style="font-size:12px;min-width:110px">${esc(s.engine||"Moteur IA")}</td><td>${stIcon(s.cited ? "ok" : "bad")}</td><td class="l" style="font-size:12px">${esc(s.who)}</td></tr>`).join("")}</tbody></table></div>
     <p class="note">${esc(K.search_note)}</p></div>
    <div class="card"><b>Cohérence des informations en ligne</b> <span class="muted">(les IA croisent ces sources)</span>
     ${(K.presence||[]).map(p=>`<div class="chk">${stIcon(p.status)}<div><b style="font-size:13px">${link(p.url, p.src)}</b><div class="muted" style="font-size:12px">${esc(p.note)}</div></div></div>`).join("")}</div>
