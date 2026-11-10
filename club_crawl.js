@@ -122,6 +122,7 @@ function crawlSection(K, cr, a){
 
   <h3 data-nav="Recommandations">Recommandations actives</h3>
   <p class="muted" style="margin:0 0 8px">Tirées de la lecture des ${ok.length} pages. SEO, GEO et AEO : quoi faire sur le site, avec le texte ou le code prêt à coller. « Avis et tendances » et « Marketing » : ce qui se passe hors du site. En dessous, les correctifs page par page sont recalculés à chaque collecte : une ligne passe au vert quand c'est corrigé.</p>
+  ${pitfallsCard(K)}
   <div class="seg" id="rPane" role="group" aria-label="Volet des recommandations" style="margin-bottom:10px;flex-wrap:wrap">${["SEO","GEO","AEO"].map(p=>`<button data-p="${p}" aria-pressed="${p===rPane}">${p} · ${recos.filter(r=>r.cat===p).length}</button>`).join("")}${K.market ? `<button data-p="AVIS" aria-pressed="${rPane==="AVIS"}">Avis et tendances</button>` : ""}${K.playbook ? `<button data-p="MKT" aria-pressed="${rPane==="MKT"}">Marketing : ce que font les meilleurs</button>` : ""}${K.bing ? `<button data-p="BING" aria-pressed="${rPane==="BING"}">Bing Webmaster Tools</button>` : ""}</div>
   ${K.market ? `<div class="rpane" data-p="AVIS" data-nav="Avis et tendances" ${rPane==="AVIS" ? "" : "hidden"}>${marketSection(K)}</div>` : ""}
   ${K.playbook ? `<div class="rpane" data-p="MKT" data-nav="Marketing" ${rPane==="MKT" ? "" : "hidden"}>${playbookSection(K)}</div>` : ""}
@@ -228,4 +229,19 @@ function bingSection(K){
    <p class="note">${esc(G.dash_note)}</p></div>
   <div class="card" style="margin-top:10px"><b>Liens utiles</b>
    <ul class="pl" style="font-size:13px">${G.links.map(([t,u])=>`<li>${link(u, t)}</li>`).join("")}</ul></div>`;
+}
+
+// ---- where SEO and AI-search advice can conflict (club.json "pitfalls") -----------------------
+function pitfallsCard(K){
+  const F = K.pitfalls; if (!F) return "";
+  const n = F.items.filter(i=>i.p).length;
+  return `<details class="card" data-nav="Pièges SEO et IA" style="margin-bottom:10px"><summary style="cursor:pointer"><b>SEO et IA : les pièges à éviter</b> <span class="muted">— ${F.items.length} points, dont ${n} qui concernent directement le site du club</span></summary>
+   <p style="font-size:13px;margin:8px 0">${esc(F.intro)}</p>
+   ${F.items.map((i,k)=>`<div class="chk"><span class="tag" style="background:var(${i.lv})">${esc(i.club)}</span><div style="flex:1"><b style="font-size:13px">${k+1}. ${esc(i.t)}</b>
+     <div style="font-size:13px"><span class="muted">Le risque :</span> ${esc(i.risk)}</div>
+     <div style="font-size:13px;margin-top:3px"><b>Que faire :</b> ${esc(i.fix)}</div>
+     ${i.check ? `<div class="muted" style="font-size:12px;margin-top:3px">${esc(i.check)}</div>` : ""}</div></div>`).join("")}
+   <div style="margin-top:8px;font-size:13px"><b>Deux réglages qui changent peu</b>
+    <ul class="pl">${F.minor.map(([t,d])=>`<li><b>${esc(t)}</b> : ${esc(d)}</li>`).join("")}</ul></div>
+   <p class="note">Vérifications faites le ${esc(fdate(F.checked))}.</p></details>`;
 }
