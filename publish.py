@@ -9,6 +9,7 @@ site/
 
 Nothing private goes into site/: no .env, no database. Sole traders listed under
 their own name are shown as "Entrepreneur individuel" unless PUBLIC_PERSON_NAMES=1.
+The client section (club.py) is published only encrypted, with CLUB_PASSWORD.
 """
 import json
 import os
@@ -26,6 +27,7 @@ def main():
     # dashboard.py and report.py read their output path when imported
     os.environ["DASHBOARD_PATH"] = os.path.join(SITE, "index.html")
     os.environ["REPORT_PATH"] = os.path.join(SITE, "report.html")
+    os.environ["CLUB_ENCRYPT"] = "1"   # client section encrypted with CLUB_PASSWORD, or left out
     import dashboard
     import report
     import serve

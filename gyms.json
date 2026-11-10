@@ -154,16 +154,24 @@
       "name": "LH Sport Club", "brand": "", "kind": "Indépendant", "cat": "Fitness / musculation",
       "address": "69 bis rue du Général Sarrail, 76600",
       "hours": "7j/7 6h–23h",
-      "fee": null, "commit": "",
+      "fee": null, "commit": "12 mois, 6 mois (arts martiaux) ou sans engagement",
       "plans": [
-        {"n": "Abonnement", "price": 30, "unit": "mois", "commit": "Aucun", "inc": "« À partir de 30 €/mois » selon exo-sport.fr ; le site du club ne publie pas de prix (formule sans engagement et formule étudiante, cours fitness, danse, yoga, TRX, programmes individualisés)", "uncertain": true}
+        {"n": "Good Forme", "price": 35, "unit": "mois", "commit": "12 mois", "inc": "Plateau musculation et cardio"},
+        {"n": "Fitness", "price": 40, "unit": "mois", "commit": "12 mois", "inc": "+ cours fitness, conseils musculation"},
+        {"n": "All Inclusive", "price": 50, "unit": "mois", "commit": "12 mois", "inc": "+ LH Fight Club, Cycling Connect, cross training (Hyrox)"},
+        {"n": "All Inclusive sans engagement", "price": 77, "unit": "mois", "commit": "Aucun"},
+        {"n": "Formule étudiante", "price": 30, "unit": "mois", "commit": "Aucun", "reduced": true, "inc": "Cours fitness, conseils musculation"},
+        {"n": "Arts martiaux", "price": 29.99, "unit": "mois", "commit": "12 mois", "side": true, "inc": "Lady Boxing, Muay Thaï, Grappling, JJB (34,99 € sur 6 mois)"},
+        {"n": "Un mois", "price": 70, "unit": "mois", "commit": "Aucun", "inc": "Tout compris, un seul mois"},
+        {"n": "Carte 10 séances", "price": 150, "unit": "carnet", "count": 10},
+        {"n": "1 cours collectif", "price": 17, "unit": "seance"}
       ],
-      "perks": ["d7", "cours", "cross", "sauna", "student", "trial", "nocommit"],
-      "rating": 4.8, "reviews": 197, "rating_src": "Google (via exo-sport.fr, juillet 2026)",
+      "perks": ["d7", "cours", "cross", "fight", "student", "trial", "nocommit"],
+      "rating": 4.8, "reviews": 203, "rating_src": "Google (note via exo-sport.fr, juillet 2026 ; 203 avis selon le site du club, novembre 2026)",
       "url": "https://lhsportclub.fr/",
-      "sources": ["https://lhsportclub.fr/", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
-      "official": false,
-      "notes": "Zone cross-training (cage), espace détente, séance d'essai. Prépa Hyrox. Prix publié seulement par exo-sport.fr (juillet 2026) ; le site du club renvoie vers une page de réservation sans tarif."
+      "sources": ["https://lhsportclub.fr/abonnements/", "https://lhsportclub.fr/", "https://lhsportclub.fr/hyrox/"],
+      "official": true,
+      "notes": "Club Hyrox affilié (2025) et certifié Les Mills : 5 espaces (2 studios, Cycling Connect, LH Fight Club, studio Hyrox) et plateau musculation, environ 50 cours par semaine. Bilan et séance découverte gratuits. Page des tarifs mise à jour en novembre 2024 : « autres tarifs sur rendez-vous »."
     },
     {
       "name": "Gino Gym Le Havre", "brand": "", "kind": "Indépendant", "cat": "Fitness / musculation",
@@ -229,21 +237,6 @@
       "sources": ["https://fairfightcrossfit.fr/tarifs/", "https://exo-sport.fr/blog/meilleures-salles-sport-le-havre"],
       "official": true,
       "notes": "−10 €/mois pour étudiants, seniors (60+) et métiers d'intervention. 10 €/mois tant que vous payez encore une autre salle. Grille tarifaire datée de 2024."
-    },
-    {
-      "name": "CrossFit Océan", "brand": "", "kind": "Indépendant", "cat": "CrossFit / Hyrox",
-      "address": "22 quai de Southampton, 76600",
-      "hours": "",
-      "fee": null, "commit": "",
-      "plans": [
-        {"n": "Abonnement", "price": 70, "unit": "mois", "inc": "« À partir de »", "uncertain": true}
-      ],
-      "perks": ["cross", "coaching", "small"],
-      "rating": 4.6, "reviews": null, "rating_src": "HyroXtrem",
-      "url": "https://hyroxtrem.com/hyrox-entrainement/le-havre-76600/",
-      "sources": ["https://hyroxtrem.com/hyrox-entrainement/le-havre-76600/"],
-      "official": false,
-      "notes": "Prépa Hyrox, open gym, coaching. Seule source : l'annuaire HyroXtrem (pas de site officiel trouvé, tél. 02 35 42 71 30)."
     },
     {
       "name": "I-Motion Club", "brand": "", "kind": "Indépendant", "cat": "Électrostimulation (EMS)",

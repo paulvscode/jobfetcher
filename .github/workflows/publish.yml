@@ -24,6 +24,8 @@ jobs:
       FT_CLIENT_ID: ${{ secrets.FT_CLIENT_ID }}
       FT_CLIENT_SECRET: ${{ secrets.FT_CLIENT_SECRET }}
       PUBLIC_PERSON_NAMES: ${{ vars.PUBLIC_PERSON_NAMES }}   # optional repository variable, "1" to show sole traders' names
+      CLUB_PASSWORD: ${{ secrets.CLUB_PASSWORD }}            # opens club.json.enc and encrypts the client section
+      PAGESPEED_API_KEY: ${{ secrets.PAGESPEED_API_KEY }}    # optional, Google PageSpeed scores in the website audit
       PYTHONIOENCODING: utf-8
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +37,8 @@ jobs:
         run: python collect.py
       - name: Businesses and local services (Sirene, BPE)
         run: python collect_territory.py
+      - name: Website audit (SEO / GEO / AEO)
+        run: python site_audit.py
       - name: Build the site
         run: python publish.py
       - uses: actions/configure-pages@v5

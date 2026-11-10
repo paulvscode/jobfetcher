@@ -52,6 +52,20 @@ Quick test: `python collect.py --limit 50 --skip-lbb`.
   Normandy and France (`python collect.py --only-sport`, under a minute).
   Both are also part of the normal monthly runs. Jobs and activity codes are listed in `sport.py`.
 
+### Client section (one gym, encrypted on the public site)
+
+- `club.json` holds the research and action plan for one client gym (identity, offer, HYROX,
+  listings, AI-search tests, manual SEO findings, actions). It stays on your computer
+  (`.gitignore`); the repository only holds `club.json.enc`. After each edit:
+  `python club.py seal` (and `python club.py open` on another computer).
+- `python site_audit.py` crawls the client's site and checks every competitor's site
+  (titles, descriptions, H1, schema.org, FAQ, robots.txt and AI crawlers, llms.txt,
+  sitemap, images, weight, speed). Add `PAGESPEED_API_KEY` (free Google key) for Core Web Vitals.
+- The dashboard shows it as a fourth view of the gym tab. On GitHub Pages it is encrypted
+  (AES-256) with `CLUB_PASSWORD`: visitors see a password box, decryption happens in the browser.
+  Put the same `CLUB_PASSWORD` in `.env` and in the repository secrets. Without it, the section
+  is left out of the public site.
+
 The statistics are published **quarterly**, so running `collect.py` once a month
 is enough. Each run refreshes everything; the API itself returns history back to 2020.
 

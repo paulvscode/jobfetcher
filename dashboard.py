@@ -81,6 +81,22 @@ GYM_TERR = [TERRITORY, "CLPE76004", "CLPE14002", "CLPE29001", "28", "FR"]
 SIZE_MIN = {"21": 50, "22": 100, "31": 200, "32": 250, "41": 500, "42": 1000, "51": 2000, "52": 5000, "53": 10000}
 
 
+def load_club_section(conn):
+    """Client file (club.json, see club.py) and the website audits (site_audit.py), or None."""
+    from club import load_club
+    club = load_club()
+    if not club:
+        return None
+    audits = {}
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE name='site_audit'").fetchone():
+        for site, checked, raw in conn.execute("SELECT site, checked, data FROM site_audit"):
+            d = json.loads(raw)
+            d["checked"] = checked
+            d.pop("sitemap_urls", None)
+            audits[site] = d
+    return {"club": club, "audits": audits}
+
+
 def load_gym(conn, labels, tension):
     """Data for the "Salles de sport" tab: competitors (gyms.json) and the centre city's figures."""
     from sport import SPORT_BPE, SPORT_NAF, SPORT_NAF88, SPORT_ROMES
@@ -234,6 +250,17 @@ def main():
         "local": local,
         "gym": load_gym(conn, labels, tension),
     }
+    # Client section: plain on your computer, encrypted on the public site (publish.py sets CLUB_ENCRYPT=1)
+    section = load_club_section(conn)
+    if section and os.getenv("CLUB_ENCRYPT") == "1":
+        from club import encrypt, password
+        pwd = password()
+        if pwd:
+            data["clubEnc"] = encrypt(json.dumps(section, ensure_ascii=False).encode(), pwd)
+        else:
+            print("CLUB_PASSWORD not set: client section left out of the public site")
+    elif section:
+        data["club"] = section
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         f.write(TEMPLATE.replace("__DATA__", payload))
@@ -303,6 +330,11 @@ code{background:var(--soft);padding:1px 5px;border-radius:4px}
 .chip{padding:4px 10px;font-size:12px}.chip i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
 .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--soft);color:var(--ink);margin:1px 3px 1px 0;white-space:nowrap}
 #gView{flex-shrink:0}
+.st{display:inline-flex;width:18px;height:18px;border-radius:50%;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;color:var(--ink)}
+.st.up{background:var(--lv1)}.st.warn{background:var(--lv4)}.st.down{background:var(--lv5)}.st.muted{background:var(--lv3)}
+.plain tbody tr{cursor:default}.plain tbody tr:hover{background:none}tr.me,.plain tbody tr.me:hover{background:var(--lv2)}
+.pl{margin:6px 0 0;padding-left:20px}.pl li{margin-bottom:6px}
+.chk{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--line)}.chk:last-child{border-bottom:none}
 @media (max-width:600px){.spark{width:70px}td.l{min-width:160px}}
 </style></head><body>
 <header><div><h1>Tendances de l'emploi — Le Havre</h1><div class="sub" id="sub"></div></div>
@@ -344,7 +376,7 @@ code{background:var(--soft);padding:1px 5px;border-radius:4px}
 <section id="v-gym" hidden>
  <div class="card"><div class="dh"><div><h2 style="margin:0 0 4px;font-size:18px">Salles de sport — ville du Havre</h2>
   <p class="muted" style="margin:0" id="gIntro"></p></div>
-  <div class="seg" id="gView" role="group" aria-label="Vue"><button data-v="comp" aria-pressed="true">Concurrents</button><button data-v="rank" aria-pressed="false">Classement</button><button data-v="market" aria-pressed="false">Marché</button></div></div>
+  <div class="seg" id="gView" role="group" aria-label="Vue"><button data-v="comp" aria-pressed="true">Concurrents</button><button data-v="rank" aria-pressed="false">Classement</button><button data-v="market" aria-pressed="false">Marché</button><button data-v="club" aria-pressed="false" id="gClubBtn" hidden>Espace client</button></div></div>
   <div class="kp" id="gKpi"></div>
   <b>Pistes pour développer une salle existante</b><ul id="gIdeas" style="margin:6px 0 0;padding-left:20px"></ul></div>
 
@@ -384,6 +416,8 @@ code{background:var(--soft);padding:1px 5px;border-radius:4px}
     <li>Un critère inconnu (pas de prix ou pas de note publiés) compte pour 50/100, une valeur neutre. « Données » = part des informations clés connues (note, nombre d'avis, prix, frais, engagement, horaires) : en dessous de 50 %, le score est fragile.</li>
    </ul><p class="note" id="rUnscored"></p></div>
  </div>
+
+ <div id="g-club" hidden></div>
 
  <div id="g-market" hidden>
   <div class="two">
@@ -906,7 +940,7 @@ const barOpts = (horizontal, fmtv) => ({responsive:true, maintainAspectRatio:fal
           y:{ticks:{color:C("--muted")}, grid:{color:C("--line"), display: !horizontal}, beginAtZero:true}}});
 
 function gymInfo(g, i){
-  const subs = (g.plans||[]).filter(p=>PERMONTH[p.unit] && !p.reduced).map(p=>({p, m:p.price*PERMONTH[p.unit]})).sort((a,b)=>a.m-b.m);
+  const subs = (g.plans||[]).filter(p=>PERMONTH[p.unit] && !p.reduced && !p.side).map(p=>({p, m:p.price*PERMONTH[p.unit]})).sort((a,b)=>a.m-b.m);
   const sess = (g.plans||[]).filter(p=>p.unit==="seance" || p.unit==="carnet").map(p=>p.unit==="carnet" ? p.price/(p.count||1) : p.price);
   return {...g, i, month: subs.length ? subs[0].m : null, unc: subs.length ? !!subs[0].p.uncertain : false,
           session: sess.length ? Math.min(...sess) : null, np: (g.perks||[]).length};
@@ -938,7 +972,7 @@ function gymIdeas(){
   const fit = GYMS.filter(g=>(g.cat==="Low cost" || g.cat==="Fitness / musculation") && g.month!=null);
   const ms = fit.map(g=>g.month), med = median(ms);
   const low = fit.filter(g=>g.month<=28).map(g=>g.name.replace(/ \(.*\)/,""));
-  const box = GYMS.filter(g=>g.cat==="CrossFit / Hyrox" && g.month!=null).map(g=>g.month);
+  const box = GYMS.filter(g=>g.cat==="CrossFit / Hyrox").flatMap(g=>(g.plans||[]).filter(p=>PERMONTH[p.unit] && !p.reduced).map(p=>p.price*PERMONTH[p.unit]));
   const ems = GYMS.filter(g=>g.cat.startsWith("Électro") && g.month!=null).map(g=>g.month);
   if (ms.length) out.push(`<b>Prix</b> : les abonnements fitness vont de ${Math.round(Math.min(...ms))} à ${Math.round(Math.max(...ms))} €/mois (médiane ${Math.round(med)} €).
     ${low.length ? `Le bas du marché est tenu par ${low.join(", ")}. ` : ""}Une salle existante gagne rarement sur le prix face au low cost : elle gagne sur l'accompagnement, l'ambiance et les créneaux.
@@ -1021,6 +1055,8 @@ function renderGym(){
       document.querySelectorAll("#gView button").forEach(x=>x.setAttribute("aria-pressed", x===b)); showGymView(); };
     document.getElementById("gFlowNaf").innerHTML = (G.naf||[]).map(n=>`<option value="${n.c}">${esc(n.l)}</option>`).join("");
     document.getElementById("gFlowNaf").oninput = drawGymFlow;
+    const cb = document.getElementById("gClubBtn");
+    if (D.club || D.clubEnc){ cb.hidden = false; if (D.club) cb.textContent = D.club.club.name; }
   }
   showGymView();
 }
@@ -1028,8 +1064,10 @@ function showGymView(){
   document.getElementById("g-comp").hidden = gView!=="comp";
   document.getElementById("g-market").hidden = gView!=="market";
   document.getElementById("g-rank").hidden = gView!=="rank";
+  document.getElementById("g-club").hidden = gView!=="club";
   if (gView==="comp") { renderGymTable(); drawGymPrices(); renderGymPerks(); }
   else if (gView==="rank") renderRank();
+  else if (gView==="club") renderClub();
   else renderGymMarket();
 }
 function renderGymTable(){
@@ -1192,6 +1230,209 @@ function renderGymMarket(){
       <td class="n">${fmt(h[0])}</td><td class="n ${cls(g)}">${pct(g)}</td><td class="n">${fmt(h[2])}</td><td class="n">${r2(ratio(h))}</td><td class="n">${fmt(h[3])}</td><td class="n">${j.t ?? "—"}</td>
       <td class="n">${fmt(n[0])}</td><td class="n">${fmt(n[2])}</td><td class="n">${r2(ratio(n))}</td>${[1,2,3,5].map(i=>`<td class="n muted">${r2(ratio(jobFig(j,i)))}</td>`).join("")}</tr>`;
   }).join("");
+}
+
+// ---- client club: position, SEO / GEO / AEO audit, action plan ------------------------------
+// On the public site the section is AES-encrypted (D.clubEnc) and decrypted here with the password.
+let CLUB = D.club || null;
+const ST = {ok:["✓","up","Bon"], warn:["!","warn","À améliorer"], bad:["✗","down","À corriger"], info:["i","muted","Pour info"]};
+const stIcon = s => `<span class="st ${ST[s][1]}" title="${ST[s][2]}" aria-label="${ST[s][2]}">${ST[s][0]}</span>`;
+const link = (u, t) => `<a href="${esc(u)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(t)}</a>`;
+
+async function unlockClub(pwd){
+  const b = D.clubEnc, dec = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pwd), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({name:"PBKDF2", salt:dec(b.salt), iterations:b.it, hash:"SHA-256"},
+    base, {name:"AES-GCM", length:256}, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:dec(b.iv)}, key, dec(b.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+function clubLogin(){
+  const el = document.getElementById("g-club");
+  el.innerHTML = `<div class="card" style="max-width:440px;margin:14px auto"><b>Espace client</b>
+    <p class="muted" style="margin:6px 0 10px">Cette section est chiffrée. Saisissez le mot de passe pour l'afficher : elle est déchiffrée dans votre navigateur, rien n'est envoyé.</p>
+    <form id="cForm" class="row" style="margin:0"><input type="password" id="cPwd" autocomplete="current-password" placeholder="Mot de passe" required style="flex:1" aria-label="Mot de passe">
+    <button class="pin" type="submit">Ouvrir</button></form><p class="note" id="cMsg" role="status"></p></div>`;
+  const go = async pwd => {
+    try { CLUB = await unlockClub(pwd); try { sessionStorage.setItem("clubPwd", pwd); } catch(e) {}
+      document.getElementById("gClubBtn").textContent = CLUB.club.name; renderClub(); }
+    catch(e) { document.getElementById("cMsg").textContent = "Mot de passe incorrect."; }
+  };
+  document.getElementById("cForm").onsubmit = e=>{ e.preventDefault(); go(document.getElementById("cPwd").value); };
+  let saved = null; try { saved = sessionStorage.getItem("clubPwd"); } catch(e) {}
+  if (saved) go(saved);
+}
+
+function seoChecks(a){
+  if (!a || a.error || !a.home) return [];
+  const h = a.home, r = a.robots || {}, L = h.local || {};
+  const len = (s, lo, hi) => !!s && s.length>=lo && s.length<=hi;
+  const alt = h.imgs ? 1 - h.img_noalt/h.imgs : 1;
+  const lt = [].concat(h.local_type||[]).filter(Boolean), isLocal = lt.some(t=>t!=="Organization");
+  const LK = {address:"adresse", geo:"GPS", openingHoursSpecification:"horaires", telephone:"téléphone", priceRange:"prix", sameAs:"réseaux"};
+  const ps = a.pagespeed && a.pagespeed.scores;
+  const c = [
+    ["https","HTTPS", a.https_redirect && a.hsts ? "ok" : a.https_redirect ? "warn" : "bad", a.https_redirect ? (a.hsts ? "HTTPS forcé, HSTS actif" : "HTTPS forcé, sans HSTS") : "pas de redirection vers HTTPS"],
+    ["title","Balise title", len(h.title,30,65) ? "ok" : h.title ? "warn" : "bad", h.title ? `${h.title.length} caractères : « ${h.title} »` : "absente"],
+    ["desc","Meta description", len(h.desc,70,160) ? "ok" : h.desc ? "warn" : "bad", h.desc ? `${h.desc.length} caractères (idéal 70 à 160)` : "absente"],
+    ["h1","Titre H1 unique", h.h1n===1 ? "ok" : "bad", h.h1n ? `${h.h1n} H1 : ${h.h1.join(" | ")}` : "aucun H1 sur la page"],
+    ["mobile","Mobile et langue", h.viewport && h.lang ? "ok" : "warn", `viewport ${h.viewport?"oui":"non"}, langue « ${h.lang||"?"} »`],
+    ["canon","URL canonique", h.canonical ? "ok" : "warn", h.canonical || "absente"],
+    ["og","Aperçu réseaux sociaux", h.og && h.og_image ? "ok" : "warn", h.og ? (h.og_image ? "titre et image Open Graph" : "pas d'image Open Graph") : "pas d'Open Graph"],
+    ["local","Fiche locale (schema.org)", isLocal && L.address && L.openingHoursSpecification ? "ok" : isLocal || L.address ? "warn" : "bad",
+      lt.length ? `${lt.join(", ")} : ${Object.entries(LK).map(([k,l])=>(L[k]?"✓ ":"✗ ")+l).join(", ")}` : "aucune donnée d'établissement"],
+    ["faq","FAQ balisée", h.faq ? "ok" : "warn", h.faq ? `${h.faq} questions (FAQPage)` : h.questions ? `${h.questions} intertitres en question, sans balisage FAQPage` : "aucune FAQ"],
+    ["sitemap","Plan du site", a.sitemap_n ? "ok" : "bad", a.sitemap_n ? `${fmt(a.sitemap_n)} adresses` : "introuvable"],
+    ["ai","Robots IA autorisés", !(r.blocked||[]).length && !r.all_blocked ? "ok" : "warn", (r.blocked||[]).length ? "bloqués : "+r.blocked.join(", ") : "aucun robot IA bloqué"+(r.exists ? "" : " (pas de robots.txt)")],
+    ["llms","Fichier llms.txt", a.llms ? "ok" : "warn", a.llms ? "présent" : "absent : résumé du site destiné aux IA"],
+    ["alt","Images décrites (alt)", alt>=.9 ? "ok" : alt>=.6 ? "warn" : "bad", `${h.imgs-h.img_noalt} sur ${h.imgs}`],
+    ["img","Images WebP/AVIF", h.imgs && h.img_modern/h.imgs>=.5 ? "ok" : "warn", `${h.img_modern} sur ${h.imgs}`],
+    ["weight","Poids de la page", h.kb<=150 && h.scripts<=20 ? "ok" : h.kb<=300 ? "warn" : "bad", `${h.kb} Ko de HTML, ${h.scripts} scripts, ${h.css} feuilles de style`],
+    ["speed","Temps de réponse", h.secs<=0.8 ? "ok" : h.secs<=1.5 ? "warn" : "bad", `${String(h.secs).replace(".",",")} s pour le HTML`],
+  ];
+  if (ps) c.push(["ps","PageSpeed mobile", ps.performance>=90 ? "ok" : ps.performance>=50 ? "warn" : "bad", `performance ${ps.performance}, SEO ${ps.seo}, accessibilité ${ps.accessibility}, LCP ${a.pagespeed.lcp}`]);
+  return c.map(([k,l,s,v])=>({k,l,s,v}));
+}
+const seoScore = cs => cs.length ? Math.round(100*cs.reduce((t,c)=>t+(c.s==="ok"?1:c.s==="warn"?.5:0),0)/cs.length) : null;
+
+function pageIssues(a){             // the client's own site, crawled page by page
+  const all = a.pages || [], P = all.filter(p=>!p.error && p.status===200);
+  const path = p => p.url.replace(/^https?:\/\/[^/]+/, "") || "/";
+  const tax = P.filter(p=>/\/(secteur|domaine|categorie-produit|category|tag)\//.test(p.url));
+  const content = P.filter(p=>!tax.includes(p));
+  const starts = {};
+  content.forEach(p=>{ if (p.desc && p.desc.length>40){ const k = p.desc.slice(0,45); (starts[k] = starts[k] || []).push(p); } });
+  const dup = Object.values(starts).filter(v=>v.length>2).flat();
+  const odd = P.filter(p=>/[\u{1D400}-\u{1D7FF}]/u.test(p.url));
+  const rows = [
+    ["Pages lues", P.length+1, "info", `accueil + ${P.length} pages du plan du site`],
+    ["Erreurs ou pages introuvables", all.length-P.length, all.length-P.length ? "bad" : "ok", all.filter(p=>p.error || p.status!==200).map(path)],
+    ["Pages de contenu sans meta description", content.filter(p=>!p.desc).length, content.some(p=>!p.desc) ? "warn" : "ok", content.filter(p=>!p.desc).map(path)],
+    ["Descriptions qui commencent pareil", dup.length, dup.length ? "warn" : "ok", dup.map(path)],
+    ["Pages sans H1 ou avec plusieurs H1", content.filter(p=>p.h1n!==1).length, content.some(p=>p.h1n!==1) ? "warn" : "ok", content.filter(p=>p.h1n!==1).map(p=>`${path(p)} (${p.h1n})`)],
+    ["Pages d'étiquettes ou de catégories indexables", tax.length, tax.length>5 ? "warn" : "ok", tax.map(path)],
+    ["Adresses en lettres décoratives", odd.length, odd.length ? "warn" : "ok", odd.map(path)],
+    ["Pages lentes (plus de 1 s)", P.filter(p=>p.secs>1).length, P.some(p=>p.secs>1) ? "warn" : "ok", P.filter(p=>p.secs>1).map(path)],
+  ];
+  return rows;
+}
+
+function clubPosition(){        // where the client stands on each criterion of the ranking
+  const S = gymScores().filter(r=>r.score!=null), me = S.find(r=>r.g.name===CLUB.club.gym);
+  if (!me) return null;
+  const rankOf = (arr, v, desc=true) => 1 + arr.filter(x=>desc ? x>v : x<v).length;
+  const others = S.filter(r=>r!==me);
+  const rows = PARTS.map(([k,l])=>{ const vals = others.map(r=>r.p[k]).filter(v=>v!=null), v = me.p[k];
+    return {l, v, med: median(vals), rank: v==null ? null : rankOf(vals, v), n: vals.length+1}; });
+  const sameCat = GYMS.filter(g=>g.cat===me.g.cat && g.month!=null && g!==me.g).map(g=>g.month);
+  const rated = GYMS.filter(g=>g.reviews!=null);
+  return {me, rank: rankOf(others.map(r=>r.score), me.score), n: S.length, rows,
+    catMed: median(sameCat), revRank: rankOf(rated.filter(g=>g!==me.g).map(g=>g.reviews), me.g.reviews), nRated: rated.length};
+}
+
+function renderClub(){
+  const el = document.getElementById("g-club");
+  if (!CLUB){ if (D.clubEnc && !document.getElementById("cForm")) clubLogin(); return; }
+  const K = CLUB.club, A = CLUB.audits || {}, mine = A[K.name] || {}, pos = clubPosition();
+  const checks = seoChecks(mine), myScore = seoScore(checks);
+  const cited = (K.search||[]).filter(s=>s.cited).length;
+  const g = pos ? pos.me.g : GYMS.find(x=>x.name===K.gym) || {};
+  const comp = Object.entries(A).map(([n,a])=>({n, cs:seoChecks(a), a})).filter(x=>x.cs.length).map(x=>({...x, sc:seoScore(x.cs)})).sort((a,b)=>b.sc-a.sc);
+  const myRank = comp.findIndex(x=>x.n===K.name)+1;
+  const COLS = [["title","Title"],["desc","Description"],["h1","H1"],["local","Fiche locale"],["faq","FAQ"],["ai","Robots IA"],["llms","llms.txt"],["alt","Alt"],["weight","Poids"],["speed","Vitesse"]];
+  const ul = xs => `<ul class="pl">${xs.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
+  const AREA = {SEO:"--c1", GEO:"--c3", AEO:"--c2", HYROX:"--c4", Offre:"--c6", Avis:"--c5"};
+  el.innerHTML = `
+  <div class="card" style="margin-top:14px"><div class="dh"><div><h2 style="margin:0 0 4px;font-size:18px">${esc(K.name)} — diagnostic</h2>
+    <p class="muted" style="margin:0">Relevé du ${esc(K.checked.split("-").reverse().join("/"))} · audit technique du ${esc((mine.checked||"").split("-").reverse().join("/"))} · ${link(K.site, K.site.replace(/^https?:\/\//,"").replace(/\/$/,""))}</p></div></div>
+   <p style="margin:10px 0 0">${esc(K.summary)}</p>
+   <div class="kp">
+    ${pos ? `<div><b>${pos.rank}<span style="font-size:13px;display:inline"> / ${pos.n}</span></b><span>au classement général (score ${Math.round(pos.me.score)}/100)</span></div>` : ""}
+    <div><b>${g.rating!=null ? g.rating.toFixed(1).replace(".",",")+" ★" : "—"}</b><span>${fmt(g.reviews)} avis Google${pos ? `, ${pos.revRank}ᵉ en nombre d'avis sur ${pos.nRated}` : ""}</span></div>
+    <div><b>${g.month!=null ? Math.round(g.month)+" €" : "—"}</b><span>prix d'entrée par mois (médiane du type : ${pos && pos.catMed!=null ? Math.round(pos.catMed)+" €" : "—"})</span></div>
+    <div><b class="${myScore<60?"down":""}">${myScore ?? "—"} %</b><span>score SEO technique, ${myRank ? myRank+"ᵉ sur "+comp.length+" sites" : ""}</span></div>
+    <div><b class="${cited ? "" : "down"}">${cited} / ${(K.search||[]).length}</b><span>réponses IA testées qui citent le club</span></div>
+   </div></div>
+
+  <div class="two">
+   <div class="card"><b class="up">Ce que le club fait mieux que les concurrents</b>${ul(K.better||[])}</div>
+   <div class="card"><b class="down">Ce que le club fait moins bien</b>${ul(K.worse||[])}</div>
+  </div>
+
+  <div class="two">
+   <div class="card"><b>Position sur chaque critère du classement</b> <span class="muted">(points sur 100)</span>
+    ${pos ? `<div class="tw" style="margin-top:8px"><table class="plain"><thead><tr><th>Critère</th><th class="n">Le club</th><th class="n">Médiane des autres</th><th class="n">Rang</th></tr></thead><tbody>
+     ${pos.rows.map(r=>`<tr><td>${esc(r.l)}</td><td class="n"><b>${r.v==null ? "—" : Math.round(r.v)}</b></td><td class="n">${r.med==null ? "—" : Math.round(r.med)}</td>
+       <td class="n ${r.rank!=null && r.rank<=3 ? "up" : r.rank!=null && r.rank>r.n/2 ? "down" : ""}">${r.rank==null ? "—" : r.rank+" / "+r.n}</td></tr>`).join("")}
+     </tbody></table></div><p class="note">Même calcul que l'onglet Classement, avec les poids choisis.</p>` : `<p class="muted">Club absent de gyms.json.</p>`}</div>
+   <div class="card"><b>Prix et réputation</b> <span class="muted">(salles de fitness et low cost ; taille = nombre d'avis)</span><div class="cw"><canvas id="cBub"></canvas></div></div>
+  </div>
+
+  <div class="card" style="margin-top:14px"><b>HYROX</b>${ul(K.hyrox.facts||[])}
+   <div class="two" style="margin-top:4px">
+    <div><b style="font-size:13px">Ce que donne l'affiliation</b><p style="margin:6px 0">${esc(K.hyrox.affiliation)}</p>
+     <b style="font-size:13px">Concurrence locale</b><p style="margin:6px 0">${esc(K.hyrox.local)}</p></div>
+    <div><b style="font-size:13px">Prochaines courses en France</b><div class="tw" style="margin-top:6px"><table class="plain"><tbody>
+     ${(K.hyrox.races||[]).map(r=>`<tr><td>${link(r[2], r[0])}</td><td>${esc(r[1])}</td></tr>`).join("")}</tbody></table></div>
+     <p class="note">Une course proche dans le temps = un objectif à proposer aux adhérents (programme de préparation, déplacement en groupe).</p></div>
+   </div></div>
+
+  <div class="two">
+   <div class="card"><b>Fiche d'identité</b><div class="tw" style="margin-top:8px"><table class="plain"><tbody>
+    ${(K.identity||[]).map(r=>`<tr><td style="vertical-align:top"><b>${esc(r[0])}</b></td><td class="l">${esc(r[1])} ${r[2] ? link(r[2], "source") : ""}</td></tr>`).join("")}</tbody></table></div></div>
+   <div class="card"><b>Offre</b>${ul(K.offer||[])}
+    <b>Ce que disent les avis</b><div class="two" style="margin-top:4px;gap:10px">
+     <div><span class="up" style="font-size:13px">Points forts</span>${ul(K.reviews.pos||[])}</div><div><span class="down" style="font-size:13px">Points de vigilance</span>${ul(K.reviews.neg||[])}</div></div></div>
+  </div>
+
+  <h3>SEO technique — le site du club</h3>
+  <div class="two" style="margin-top:0">
+   <div class="card"><b>Page d'accueil</b> <span class="muted">(${myScore ?? "—"} %)</span>
+    ${checks.map(c=>`<div class="chk">${stIcon(c.s)}<div><b style="font-size:13px">${esc(c.l)}</b><div class="muted" style="font-size:12px">${esc(c.v)}</div></div></div>`).join("")}
+    ${mine.pagespeed ? "" : `<p class="note">Vitesse réelle sur mobile (Core Web Vitals) : ajoutez une clé gratuite PAGESPEED_API_KEY pour la mesurer à chaque mise à jour.</p>`}</div>
+   <div class="card"><b>Tout le site</b> <span class="muted">(pages du plan du site)</span>
+    ${mine.pages ? pageIssues(mine).map(r=>`<div class="chk">${stIcon(r[2])}<div style="flex:1"><b style="font-size:13px">${esc(r[0])} : ${r[1]}</b>
+      ${Array.isArray(r[3]) ? (r[3].length ? `<details><summary class="muted" style="font-size:12px;cursor:pointer">voir les pages</summary><div class="muted" style="font-size:12px;word-break:break-all">${r[3].map(esc).join("<br>")}</div></details>` : "")
+        : `<div class="muted" style="font-size:12px">${esc(r[3])}</div>`}</div></div>`).join("") : '<p class="muted">Lancez <code>python site_audit.py</code>.</p>'}
+    <b style="display:block;margin-top:12px">Constats relevés à la main</b>
+    ${(K.manual_seo||[]).map(m=>`<div class="chk">${stIcon(m[0])}<div><b style="font-size:13px">${esc(m[1])}</b><div class="muted" style="font-size:12px">${esc(m[2])}</div></div></div>`).join("")}</div>
+  </div>
+
+  <div class="card" style="margin-top:14px"><b>Comparaison avec les sites des concurrents</b> <span class="muted">(page d'accueil ou page du club pour les chaînes)</span>
+   <div class="tw" style="margin-top:8px"><table class="plain"><thead><tr><th>Site</th><th class="n">Score</th>${COLS.map(c=>`<th style="text-align:center">${c[1]}</th>`).join("")}</tr></thead><tbody>
+    ${comp.map(x=>{ const by = Object.fromEntries(x.cs.map(c=>[c.k,c])); return `<tr class="${x.n===K.name?"me":""}"><td>${esc(x.n)}</td><td class="n"><b>${x.sc}</b></td>
+      ${COLS.map(c=>`<td style="text-align:center" title="${esc(by[c[0]] ? by[c[0]].v : "")}">${by[c[0]] ? stIcon(by[c[0]].s) : "—"}</td>`).join("")}</tr>`; }).join("")}
+   </tbody></table></div>
+   <p class="note">✓ bon · ! à améliorer · ✗ à corriger. Survolez une case pour le détail. Les chaînes partagent un site national : leur score reflète surtout le travail de leur siège.</p></div>
+
+  <h3>GEO et AEO — visibilité dans les moteurs de réponse et les assistants IA</h3>
+  <div class="two" style="margin-top:0">
+   <div class="card"><b>Le club est-il cité ?</b><div class="tw" style="margin-top:8px"><table class="plain"><thead><tr><th>Question posée</th><th>Cité</th><th>Qui est cité à la place</th></tr></thead><tbody>
+    ${(K.search||[]).map(s=>`<tr><td class="l">« ${esc(s.q)} »</td><td>${stIcon(s.cited ? "ok" : "bad")}</td><td class="l" style="font-size:12px">${esc(s.who)}</td></tr>`).join("")}</tbody></table></div>
+    <p class="note">${esc(K.search_note)}</p></div>
+   <div class="card"><b>Cohérence des informations en ligne</b> <span class="muted">(les IA croisent ces sources)</span>
+    ${(K.presence||[]).map(p=>`<div class="chk">${stIcon(p.status)}<div><b style="font-size:13px">${link(p.url, p.src)}</b><div class="muted" style="font-size:12px">${esc(p.note)}</div></div></div>`).join("")}</div>
+  </div>
+
+  <h3>Plan d'action</h3>
+  <div class="tw"><table class="plain"><thead><tr><th class="n">Priorité</th><th>Domaine</th><th>Action</th><th>Pourquoi</th><th>Comment</th><th>Effort</th></tr></thead><tbody>
+   ${(K.actions||[]).sort((a,b)=>a.p-b.p).map(x=>`<tr><td class="n"><b>${x.p}</b></td><td><span class="tag" style="background:color-mix(in srgb, var(${AREA[x.area]||"--c6"}) 22%, transparent)">${esc(x.area)}</span></td>
+     <td class="l" style="min-width:180px"><b>${esc(x.t)}</b></td><td class="l" style="font-size:12px">${esc(x.why)}</td><td class="l" style="font-size:12px;min-width:280px">${esc(x.how)}</td><td class="l" style="font-size:12px;min-width:90px">${esc(x.effort)}</td></tr>`).join("")}
+  </tbody></table></div>
+  <p class="note">Priorité 1 = ce mois-ci, 2 = ce trimestre, 3 = dans les six mois. L'audit technique se met à jour à chaque collecte mensuelle ; le reste de la section (fichier club.json) est un relevé daté à refaire chaque trimestre.</p>`;
+  drawClubChart();
+}
+function drawClubChart(){
+  if (!CLUB || !document.getElementById("cBub")) return;
+  const me = CLUB.club.gym, pts = GYMS.filter(g=>(g.cat==="Fitness / musculation" || g.cat==="Low cost") && g.month!=null && g.rating!=null);
+  const pt = g => ({x:Math.round(g.month), y:g.rating, r:4+Math.sqrt(g.reviews ?? 10)/1.6, n:g.name.replace(/ \(.*\)/,"")});
+  gChart("cBub", {type:"bubble", data:{datasets:[
+      {label:"Concurrents", _pal:5, backgroundColor:PAL[5], borderColor:PAL[5], data:pts.filter(g=>g.name!==me).map(pt)},
+      {label:me, _pal:0, backgroundColor:PAL[0], borderColor:PAL[0], data:pts.filter(g=>g.name===me).map(pt)}]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:C("--muted"), boxWidth:12}}, tooltip:{...tipColors(), callbacks:{label:c=>`${c.raw.n} : ${c.raw.x} €/mois, ${String(c.raw.y).replace(".",",")} ★`}}},
+      scales:{x:{title:{display:true, text:"prix d'entrée (€/mois)", color:C("--muted")}, ticks:{color:C("--muted")}, grid:{color:C("--line")}},
+              y:{title:{display:true, text:"note Google", color:C("--muted")}, ticks:{color:C("--muted")}, grid:{color:C("--line")}, suggestedMin:3.8, suggestedMax:5}}}});
 }
 
 // ---- light / dark switch ------------------------------------------------------------
